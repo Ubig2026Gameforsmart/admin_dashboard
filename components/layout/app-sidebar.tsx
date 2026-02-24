@@ -37,6 +37,7 @@ import {
   FileCheck,
   Dices,
   Trophy,
+  ClipboardList,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -122,6 +123,11 @@ const navigation: NavItem[] = [
         title: "nav.dashboard",
         href: "/competition/dashboard",
         icon: LayoutDashboard,
+      },
+      {
+        title: "Manage Competitions",
+        href: "/manage-competitions",
+        icon: ClipboardList,
       },
     ],
   },
