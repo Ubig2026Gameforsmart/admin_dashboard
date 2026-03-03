@@ -64,54 +64,61 @@ interface Competition {
   title: string;
   slug: string;
   status: "draft" | "published" | "completed";
-  startDate: string;
-  endDate: string;
+  regStartDate: string;
+  regEndDate: string;
+  finalEndDate: string | null;
   posterUrl: string | null;
   participantCount: number;
-  education?: string;
-  class?: string;
+  category: string | null;
 }
-
 const DUMMY: Competition[] = [
   {
     id: "comp_1",
     title: "Cerdas Cermat Online - Sains",
     slug: "cerdas-cermat-online-sains",
     status: "published",
-    startDate: "2026-03-10T08:00:00Z",
-    endDate: "2026-03-12T17:00:00Z",
+    regStartDate: "2026-03-10T08:00:00Z",
+    regEndDate: "2026-03-12T17:00:00Z",
+    finalEndDate: "2026-03-20T17:00:00Z",
     posterUrl: "/images/poster1.jpg",
     participantCount: 1542,
+    category: "SMP, SMA",
   },
   {
     id: "comp_2",
     title: "Cerdas Cermat Online - Matematika",
     slug: "cerdas-cermat-online-matematika",
     status: "published",
-    startDate: "2026-04-15T09:00:00Z",
-    endDate: "2026-04-17T15:00:00Z",
+    regStartDate: "2026-04-15T09:00:00Z",
+    regEndDate: "2026-04-17T15:00:00Z",
+    finalEndDate: "2026-04-25T15:00:00Z",
     posterUrl: "/images/poster1.jpg",
     participantCount: 870,
+    category: "SD",
   },
   {
     id: "comp_3",
     title: "Cerdas Cermat Online - Bahasa Inggris",
     slug: "cerdas-cermat-online-bahasa-inggris",
     status: "published",
-    startDate: "2026-05-20T10:00:00Z",
-    endDate: "2026-05-22T18:00:00Z",
+    regStartDate: "2026-05-20T10:00:00Z",
+    regEndDate: "2026-05-22T18:00:00Z",
+    finalEndDate: "2026-05-30T18:00:00Z",
     posterUrl: "/images/poster1.jpg",
     participantCount: 634,
+    category: "SMA, College",
   },
   {
     id: "comp_4",
     title: "Cerdas Cermat Online - IPS",
     slug: "cerdas-cermat-online-ips",
     status: "published",
-    startDate: "2026-06-01T09:00:00Z",
-    endDate: "2026-06-03T17:00:00Z",
+    regStartDate: "2026-06-01T09:00:00Z",
+    regEndDate: "2026-06-03T17:00:00Z",
+    finalEndDate: "2026-06-10T17:00:00Z",
     posterUrl: "/images/poster1.jpg",
     participantCount: 421,
+    category: "Others",
   },
 ];
 
@@ -137,7 +144,7 @@ export function ManageCompetitionsClient() {
       const { data, error } = await supabase
         .from("competitions")
         .select(`
-          id, title, slug, start_date, end_date, poster_url, status, education, class,
+          id, title, slug, status, registration_start_date, registration_end_date, final_end_date, poster_url, category,
           participants:competition_participants(count)
         `)
         .order("created_at", { ascending: false });
@@ -150,12 +157,12 @@ export function ManageCompetitionsClient() {
           title: d.title,
           slug: d.slug,
           status: d.status,
-          startDate: d.start_date,
-          endDate: d.end_date,
+          regStartDate: d.registration_start_date,
+          regEndDate: d.registration_end_date,
+          finalEndDate: d.final_end_date,
           posterUrl: d.poster_url,
+          category: d.category,
           participantCount: d.participants[0]?.count || 0,
-          education: d.education,
-          class: d.class,
         })) || [];
         setCompetitions(mapped);
       }
@@ -179,19 +186,7 @@ export function ManageCompetitionsClient() {
     },
     coming_soon: {
       label: t("comp_detail.status_coming_soon") || "Coming Soon",
-      className: "bg-orange-500/15 text-orange-600 border-orange-200 dark:text-orange-400 dark:border-orange-800",
     },
-  };
-
-  const getEducationLabel = (edu: string) => {
-    switch (edu) {
-      case "SD": return t("manage_competitions.form_education_sd") || "Elementary School";
-      case "SMP": return t("manage_competitions.form_education_smp") || "Junior High School";
-      case "SMA": return t("manage_competitions.form_education_sma") || "Senior High School";
-      case "College": return t("manage_competitions.form_education_college") || "College/University";
-      case "Others": return t("manage_competitions.form_education_others") || "Others";
-      default: return edu;
-    }
   };
 
   const filtered = competitions.filter((c) =>
@@ -244,7 +239,7 @@ export function ManageCompetitionsClient() {
           </div>
           <Button className="gap-1.5" onClick={() => router.push("/manage-competitions/add")}>
             <Plus className="h-4 w-4" />
-            {t("manage_competitions.add_button") || "Add Competition"}
+            {t("action.add") || "Add"}
           </Button>
         </div>
       </div>
@@ -256,6 +251,7 @@ export function ManageCompetitionsClient() {
             <TableRow>
               <TableHead className="w-[60px]">{t("manage_competitions.table_poster") || "Poster"}</TableHead>
               <TableHead>{t("manage_competitions.table_title") || "Title"}</TableHead>
+              <TableHead>{t("table.category") || "Category"}</TableHead>
               <TableHead>{t("manage_competitions.table_status") || "Status"}</TableHead>
               <TableHead>{t("manage_competitions.table_schedule") || "Schedule"}</TableHead>
               <TableHead className="text-center">{t("manage_competitions.table_participants") || "Participants"}</TableHead>
@@ -265,13 +261,13 @@ export function ManageCompetitionsClient() {
           <TableBody>
             {isLoading ? (
                <TableRow>
-                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                 <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                    Loading competitions...
                  </TableCell>
                </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   {t("manage_competitions.no_found") || "No competitions found."}
                 </TableCell>
               </TableRow>
@@ -299,27 +295,33 @@ export function ManageCompetitionsClient() {
 
                     {/* Title */}
                     <TableCell>
-                      <div className="flex flex-col min-w-[200px]">
-                        <span className="font-medium truncate" title={comp.title}>
-                          {comp.title}
-                        </span>
-                        {(comp.education || comp.class) && (
-                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                            {comp.education && (
-                              <div className="flex items-center gap-1">
-                                <GraduationCap className="h-3 w-3" />
-                                <span>{getEducationLabel(comp.education)}</span>
-                              </div>
-                            )}
-                            {comp.class && (
-                              <div className="flex items-center gap-1">
-                                <BookOpen className="h-3 w-3" />
-                                <span>{t("manage_competitions.class_level") || "Grade"} {comp.class}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <span className="font-medium truncate block max-w-[250px]" title={comp.title}>
+                        {comp.title}
+                      </span>
+                    </TableCell>
+
+                    {/* Category */}
+                    <TableCell>
+                      {comp.category ? (() => {
+                        const labels = comp.category.split(',').map(c => {
+                          const key = c.trim();
+                          if (key === "SD") return t("category.sd") || "SD";
+                          if (key === "SMP") return t("category.smp") || "SMP";
+                          if (key === "SMA") return t("category.sma") || "SMA/SMK";
+                          if (key === "College") return t("category.college") || "Mahasiswa";
+                          if (key === "Others") return t("category.others") || "Umum";
+                          return key;
+                        });
+                        const fullText = labels.join(", ");
+                        return (
+                          <span
+                            className="text-sm text-muted-foreground truncate block max-w-[150px]"
+                            title={fullText}
+                          >
+                            {fullText}
+                          </span>
+                        );
+                      })() : <span className="text-muted-foreground">—</span>}
                     </TableCell>
 
                     {/* Status */}
@@ -331,9 +333,10 @@ export function ManageCompetitionsClient() {
 
                     {/* Schedule */}
                     <TableCell>
-                      <div className="flex flex-col gap-0.5 text-xs whitespace-nowrap">
-                        <span>{format(new Date(comp.startDate), "d MMM yyyy")}</span>
-                        <span className="text-muted-foreground">{format(new Date(comp.endDate), "d MMM yyyy")}</span>
+                      <div className="flex items-center gap-1.5 text-xs whitespace-nowrap">
+                        <span>{comp.regStartDate ? format(new Date(comp.regStartDate), "d MMM yyyy") : "—"}</span>
+                        <span className="text-muted-foreground">—</span>
+                        <span>{(comp.finalEndDate || comp.regEndDate) ? format(new Date(comp.finalEndDate || comp.regEndDate), "d MMM yyyy") : "—"}</span>
                       </div>
                     </TableCell>
 
@@ -401,7 +404,7 @@ export function ManageCompetitionsClient() {
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground mb-4">
-              This action cannot be undone. This will permanently delete the <strong>{deleteTarget?.title}</strong> competition and remove all related data.
+              This action cannot be undone.
             </p>
             <Label className="text-sm font-medium mb-2 block">
               Please type <span className="font-bold select-none">Delete Competition</span> to confirm.
@@ -422,7 +425,7 @@ export function ManageCompetitionsClient() {
               disabled={deleteConfirmationPhrase !== "Delete Competition" || isDeleting}
               onClick={handleDeleteCompetition}
             >
-              {isDeleting ? "Deleting..." : "Delete Permanently"}
+              {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

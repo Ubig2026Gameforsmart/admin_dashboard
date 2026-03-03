@@ -770,6 +770,7 @@ export const en: Record<string, string> = {
   "comp_detail.export": "Export",
   "comp_detail.edit": "Edit",
   "comp_detail.prize_pool": "Prize Pool",
+  "comp_detail.registration_fee": "Registration Fee",
   "comp_detail.description": "Description",
   "comp_detail.rules": "Rules",
   "comp_detail.reg_link": "Registration Link",
@@ -782,8 +783,7 @@ export const en: Record<string, string> = {
   "comp_detail.table_avg": "Avg Score",
   "comp_detail.table_registered": "Registered",
   "comp_detail.no_players": "No players found.",
-  "comp_detail.filter_all_education": "All Education",
-  "comp_detail.filter_all_class": "All Grades",
+  "comp_detail.filter_all_category": "All Categories",
   "comp_detail.tab_finalist": "Finalist",
   "comp_detail.added_finalist": "Moved to Finalist",
   "comp_detail.removed_finalist": "Removed from Finalist",
@@ -798,4 +798,32 @@ export const en: Record<string, string> = {
   "comp_detail.add_confirm_title": "Move to Finalist?",
   "comp_detail.remove_confirm_desc": "Are you sure you want to remove this player from the finalist list?",
   "comp_detail.add_confirm_desc": "Are you sure you want to move this player to the finalist list?",
+
+  // Competition phases
+  "manage_competitions.phase_registration": "Registration",
+  "manage_competitions.phase_qualification": "Qualification",
+  "manage_competitions.phase_final": "Final",
+
+  // Category short labels
+  "category.sd": "Elementary School",
+  "category.smp": "Junior High School",
+  "category.sma": "Senior High School",
+  "category.college": "College/University",
+  "category.others": "Others",
+
+  // Dialog labels
+  "manage_competitions.form_schedule": "Schedule",
+  "manage_competitions.set_schedule": "Click to set schedule...",
+  "manage_competitions.set_category": "Click to set category...",
+  "action.done": "Done",
+
+  // Manage Competitions Form (additional keys)
+  "manage_competitions.add_title": "Add Competition",
+  "manage_competitions.form_title_placeholder": "e.g. Cerdas Cermat Online - Sains",
+  "manage_competitions.form_description": "Description",
+  "manage_competitions.form_desc_placeholder": "Write competition details, prizes...",
+  "manage_competitions.form_rules_placeholder": "1. Each participant may only register once...",
+  "manage_competitions.err_required": "Please fill required fields: title, registration dates",
+  "manage_competitions.err_file_size": "File size exceeds 5MB limit",
+  "manage_competitions.err_save": "Failed to save competition",
 };

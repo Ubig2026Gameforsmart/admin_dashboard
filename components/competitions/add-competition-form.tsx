@@ -6,9 +6,9 @@ import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { generateXID } from "@/lib/id-generator";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, X, ChevronRight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Upload, X, ChevronRight, CalendarDays, Tag } from "lucide-react";
 import Link from "next/link";
 
 export function AddCompetitionForm({ initialData, compId }: { initialData?: any; compId?: string }) {
@@ -29,17 +36,38 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
   const [formTitle, setFormTitle] = useState(initialData?.title || "");
   const [formDesc, setFormDesc] = useState(initialData?.description || "");
   const [formRules, setFormRules] = useState(initialData?.rules ? initialData.rules.join("\n") : "");
-  const [formStart, setFormStart] = useState(initialData?.start_date ? new Date(initialData.start_date).toISOString().split('T')[0] : "");
-  const [formEnd, setFormEnd] = useState(initialData?.end_date ? new Date(initialData.end_date).toISOString().split('T')[0] : "");
+  const [regStart, setRegStart] = useState(initialData?.registration_start_date ? new Date(initialData.registration_start_date).toISOString().split('T')[0] : "");
+  const [regEnd, setRegEnd] = useState(initialData?.registration_end_date ? new Date(initialData.registration_end_date).toISOString().split('T')[0] : "");
+  const [qualStart, setQualStart] = useState(initialData?.qualification_start_date ? new Date(initialData.qualification_start_date).toISOString().split('T')[0] : "");
+  const [qualEnd, setQualEnd] = useState(initialData?.qualification_end_date ? new Date(initialData.qualification_end_date).toISOString().split('T')[0] : "");
+  const [finalStart, setFinalStart] = useState(initialData?.final_start_date ? new Date(initialData.final_start_date).toISOString().split('T')[0] : "");
+  const [finalEnd, setFinalEnd] = useState(initialData?.final_end_date ? new Date(initialData.final_end_date).toISOString().split('T')[0] : "");
   const [formStatus, setFormStatus] = useState(initialData?.status || "draft");
-  const [formEducation, setFormEducation] = useState(initialData?.education || "");
-  const [formClass, setFormClass] = useState(initialData?.class || "");
+  const [formCategories, setFormCategories] = useState<string[]>(
+    initialData?.category ? initialData.category.split(",").map((s: string) => s.trim()) : []
+  );
+  const toggleCategory = (cat: string) => {
+    setFormCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+  const CATEGORIES = [
+    { id: "SD", tKey: "category.sd", fallback: "SD" },
+    { id: "SMP", tKey: "category.smp", fallback: "SMP" },
+    { id: "SMA", tKey: "category.sma", fallback: "SMA/SMK" },
+    { id: "College", tKey: "category.college", fallback: "Mahasiswa" },
+    { id: "Others", tKey: "category.others", fallback: "Umum" },
+  ];
   const [formFee, setFormFee] = useState(initialData?.registration_fee?.toString() || "25000");
   const [formPrize, setFormPrize] = useState(initialData?.prize_pool?.toString() || "5000000");
   const [formLink, setFormLink] = useState(initialData?.registration_link || "");
   const [formPosterFile, setFormPosterFile] = useState<File | null>(null);
   const [formPosterPreview, setFormPosterPreview] = useState<string | null>(initialData?.poster_url || null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Dialog states
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
 
   const handlePosterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,24 +86,23 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
   };
 
   const handleSave = async () => {
-    if (!formTitle || !formStart || !formEnd) {
-      toast.error("Please fill required fields: title, start date, end date");
+    if (!formTitle || !regStart || !regEnd) {
+      toast.error("Please fill required fields: title, registration dates");
       return;
     }
 
     setIsSaving(true);
-    let uploadedPosterUrl = initialData?.poster_url || null;
-
     try {
+      let uploadedPosterUrl = initialData?.poster_url || null;
+
       if (formPosterFile) {
-        const fileExt = formPosterFile.name.split('.').pop();
-        const fileName = `${generateXID()}.${fileExt}`;
-        const filePath = `posters/${fileName}`;
+        const fileExt = formPosterFile.name.split(".").pop();
+        const filePath = `posters/${Date.now()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from("competitions")
-          .upload(filePath, formPosterFile);
-        
+          .upload(filePath, formPosterFile, { upsert: true });
+
         if (uploadError && !uploadError.message.includes("Bucket not found")) {
            throw uploadError;
         }
@@ -91,63 +118,55 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
       const rulesArray = formRules.split("\n").filter((r: string) => r.trim() !== "");
 
       if (compId) {
-        // Edit Mode
         const slug = formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + compId.substring(0, 4);
-        
         const updateData = {
           title: formTitle,
           slug: slug,
           description: formDesc,
           rules: rulesArray,
-          start_date: new Date(formStart).toISOString(),
-          end_date: new Date(formEnd).toISOString(),
+          registration_start_date: new Date(regStart).toISOString(),
+          registration_end_date: new Date(regEnd).toISOString(),
+          qualification_start_date: qualStart ? new Date(qualStart).toISOString() : null,
+          qualification_end_date: qualEnd ? new Date(qualEnd).toISOString() : null,
+          final_start_date: finalStart ? new Date(finalStart).toISOString() : null,
+          final_end_date: finalEnd ? new Date(finalEnd).toISOString() : null,
           poster_url: uploadedPosterUrl,
           status: formStatus,
-          education: formEducation || null,
-          class: formClass || null,
+          category: formCategories.length > 0 ? formCategories.join(", ") : null,
           registration_fee: Number(formFee),
           prize_pool: Number(formPrize),
           registration_link: formLink || null,
         };
-
-        const { error } = await supabase
-          .from("competitions")
-          .update(updateData)
-          .eq("id", compId);
-
+        const { error } = await supabase.from("competitions").update(updateData).eq("id", compId);
         if (error) throw error;
         toast.success(t("comp_detail.edit") + " Success!");
         router.push(`/manage-competitions/${compId}`);
       } else {
-        // Add Mode
         const newId = generateXID();
         const slug = formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + newId.substring(0, 4);
-
-        const { error } = await supabase
-          .from("competitions")
-          .insert({
-            id: newId,
-            title: formTitle,
-            slug: slug,
-            description: formDesc,
-            rules: rulesArray,
-            start_date: new Date(formStart).toISOString(),
-            end_date: new Date(formEnd).toISOString(),
-            poster_url: uploadedPosterUrl,
-            status: formStatus,
-            education: formEducation || null,
-            class: formClass || null,
-            registration_fee: Number(formFee),
-            prize_pool: Number(formPrize),
-            registration_link: formLink || null,
-          });
-
+        const { error } = await supabase.from("competitions").insert({
+          id: newId,
+          title: formTitle,
+          slug: slug,
+          description: formDesc,
+          rules: rulesArray,
+          registration_start_date: new Date(regStart).toISOString(),
+          registration_end_date: new Date(regEnd).toISOString(),
+          qualification_start_date: qualStart ? new Date(qualStart).toISOString() : null,
+          qualification_end_date: qualEnd ? new Date(qualEnd).toISOString() : null,
+          final_start_date: finalStart ? new Date(finalStart).toISOString() : null,
+          final_end_date: finalEnd ? new Date(finalEnd).toISOString() : null,
+          poster_url: uploadedPosterUrl,
+          status: formStatus,
+          category: formCategories.length > 0 ? formCategories.join(", ") : null,
+          registration_fee: Number(formFee),
+          prize_pool: Number(formPrize),
+          registration_link: formLink || null,
+        });
         if (error) throw error;
         toast.success(t("manage_competitions.form_save") + " Success!");
         router.push("/manage-competitions");
       }
-
-
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to save competition");
@@ -156,56 +175,53 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
     }
   };
 
+  // Helper: format date for display
+  const fmtDate = (d: string) => {
+    if (!d) return "—";
+    const date = new Date(d);
+    return date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  const hasSchedule = regStart || regEnd || qualStart || qualEnd || finalStart || finalEnd;
+  const selectedCatLabels = CATEGORIES.filter(c => formCategories.includes(c.id)).map(c => t(c.tKey) || c.fallback);
+
   return (
     <div className="space-y-6">
       {/* Breadcrumb Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Link href="/manage-competitions" className="hover:text-foreground transition-colors cursor-pointer">
-              {t("manage_competitions.title") || "Competitions"}
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            {compId && (
-              <>
-                <Link href={`/manage-competitions/${compId}`} className="hover:text-foreground transition-colors cursor-pointer">
-                  {t("comp_detail.breadcrumb") || "Competition Detail"}
-                </Link>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </>
+            {compId ? (
+              <Link href={`/manage-competitions/${compId}`} className="hover:text-foreground transition-colors cursor-pointer">
+                {t("comp_detail.breadcrumb") || "Competition Detail"}
+              </Link>
+            ) : (
+              <Link href="/manage-competitions" className="hover:text-foreground transition-colors cursor-pointer">
+                {t("manage_competitions.title") || "Competitions"}
+              </Link>
             )}
-            <span className="text-foreground font-medium">
-              {compId ? (t("comp_detail.edit") || "Edit") : (t("action.add") || "Add")}
-            </span>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-foreground font-medium">{compId ? t("comp_detail.edit") || "Edit" : t("action.add") || "Add"}</span>
           </nav>
-          <h1 className="text-2xl font-bold text-foreground">
-            {compId ? t("comp_detail.edit") || "Edit Competition" : t("manage_competitions.add_dialog_title") || "Add Competition"}
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">{compId ? t("comp_detail.edit") || "Edit Competition" : t("manage_competitions.add_title") || "Add Competition"}</h1>
         </div>
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Saving..." : (compId ? (t("action.save") || "Save") : (t("action.add") || "Add"))}
-        </Button>
+        <Button onClick={handleSave} disabled={isSaving} className="cursor-pointer">{compId ? t("action.save") || "Save" : t("action.add") || "Add"}</Button>
       </div>
 
-      <div className="grid gap-6 p-6 border rounded-lg bg-card">
+      {/* Form Card */}
+      <div className="rounded-xl border bg-card p-6 space-y-5">
         {/* Title */}
         <div className="grid gap-2">
           <Label htmlFor="comp-title">{t("manage_competitions.form_title") || "Title"}</Label>
-          <Input 
-             id="comp-title" 
-             placeholder="e.g. Cerdas Cermat Online - Sains" 
-             value={formTitle}
-             onChange={(e) => setFormTitle(e.target.value)}
-          />
+          <Input id="comp-title" placeholder="e.g. Cerdas Cermat Online - Sains" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} />
         </div>
 
         {/* Description */}
         <div className="grid gap-2">
-          <Label htmlFor="comp-desc">{t("manage_competitions.form_desc") || "Description"}</Label>
+          <Label htmlFor="comp-desc">{t("manage_competitions.form_description") || "Description"}</Label>
           <Textarea
             id="comp-desc"
-            placeholder="Write competition details, prizes..."
-            rows={4}
+            placeholder={t("manage_competitions.form_desc_placeholder") || "Write competition details, prizes..."}
             value={formDesc}
             onChange={(e) => setFormDesc(e.target.value)}
           />
@@ -216,14 +232,13 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
           <Label htmlFor="comp-rules">{t("manage_competitions.form_rules") || "Rules"}</Label>
           <Textarea
             id="comp-rules"
-            placeholder="1. Each participant may only register once&#10;2. ...&#10;3. ..."
-            rows={4}
+            placeholder={t("manage_competitions.form_rules_placeholder") || "1. Each participant may only register once 2. ... 3. ..."}
             value={formRules}
             onChange={(e) => setFormRules(e.target.value)}
           />
         </div>
 
-        {/* Horizontal Layout for Poster and Dates */}
+        {/* Poster + Schedule & Category triggers */}
         <div className="grid grid-cols-1 lg:grid-cols-[384px_1fr] gap-x-8 gap-y-6">
           {/* Poster Upload */}
           <div className="grid gap-2">
@@ -262,20 +277,66 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
             )}
           </div>
 
-          {/* Dates - stacked vertically */}
-          <div className="flex flex-col justify-start gap-4 max-w-xs">
+          {/* Schedule & Category — compact triggers */}
+          <div className="flex flex-col justify-start gap-4">
+            {/* Schedule Trigger */}
             <div className="grid gap-2">
-              <Label htmlFor="comp-start">{t("manage_competitions.form_start_date") || "Start Date"}</Label>
-              <Input id="comp-start" type="date" value={formStart} onChange={(e) => setFormStart(e.target.value)} />
+              <Label>{t("manage_competitions.form_schedule") || "Schedule"}</Label>
+              <button
+                type="button"
+                onClick={() => setScheduleOpen(true)}
+                className="flex items-start gap-3 w-full rounded-lg border border-border/60 bg-muted/30 hover:bg-muted/50 transition-colors p-3 text-left cursor-pointer"
+              >
+                <CalendarDays className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+                {hasSchedule ? (
+                  <div className="flex flex-col sm:flex-row flex-wrap items-start gap-x-8 gap-y-4 text-sm w-full">
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("manage_competitions.phase_registration") || "Registration"}</span>
+                      <span>{fmtDate(regStart)} — {fmtDate(regEnd)}</span>
+                    </div>
+                    {(qualStart || qualEnd) && (
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("manage_competitions.phase_qualification") || "Qualification"}</span>
+                        <span>{fmtDate(qualStart)} — {fmtDate(qualEnd)}</span>
+                      </div>
+                    )}
+                    {(finalStart || finalEnd) && (
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("manage_competitions.phase_final") || "Final"}</span>
+                        <span>{fmtDate(finalStart)} — {fmtDate(finalEnd)}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">{t("manage_competitions.set_schedule") || "Click to set schedule..."}</span>
+                )}
+              </button>
             </div>
+
+            {/* Category Trigger */}
             <div className="grid gap-2">
-              <Label htmlFor="comp-end">{t("manage_competitions.form_end_date") || "End Date"}</Label>
-              <Input id="comp-end" type="date" value={formEnd} onChange={(e) => setFormEnd(e.target.value)} />
+              <Label>{t("table.category") || "Category"}</Label>
+              <button
+                type="button"
+                onClick={() => setCategoryOpen(true)}
+                className="flex items-center gap-3 w-full rounded-lg border border-border/60 bg-muted/30 hover:bg-muted/50 transition-colors p-3 text-left cursor-pointer"
+              >
+                <Tag className="h-5 w-5 text-purple-500 shrink-0" />
+                {selectedCatLabels.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedCatLabels.map((label, i) => (
+                      <Badge key={i} variant="default" className="text-[11px] px-2 py-0.5 font-normal">{label}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">{t("manage_competitions.set_category") || "Click to set category..."}</span>
+                )}
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Status, Education, Class, Fee & Prize — full width */}
+        {/* Status, Fee & Prize — full width */}
         <div className="flex flex-wrap xl:flex-nowrap gap-4 w-full">
           <div className="grid gap-2 w-[140px] shrink-0">
             <Label>{t("manage_competitions.form_status") || "Status"}</Label>
@@ -287,55 +348,6 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
                 <SelectItem value="draft">{t("comp_detail.status_draft") || "Draft"}</SelectItem>
                 <SelectItem value="coming_soon">{t("comp_detail.status_coming_soon") || "Coming Soon"}</SelectItem>
                 <SelectItem value="published">{t("comp_detail.status_published") || "Published"}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2 w-[170px] shrink-0">
-            <Label>{t("manage_competitions.form_education") || "Education"}</Label>
-            <Select value={formEducation} onValueChange={(val) => { setFormEducation(val); setFormClass(""); }}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("manage_competitions.form_education_placeholder") || "Select education"} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="SD">{t("manage_competitions.form_education_sd") || "Elementary School"}</SelectItem>
-                <SelectItem value="SMP">{t("manage_competitions.form_education_smp") || "Junior High School"}</SelectItem>
-                <SelectItem value="SMA">{t("manage_competitions.form_education_sma") || "Senior High School"}</SelectItem>
-                <SelectItem value="College">{t("manage_competitions.form_education_college") || "College/University"}</SelectItem>
-                <SelectItem value="Others">{t("manage_competitions.form_education_others") || "Others"}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2 min-w-[10px] shrink-0">
-            <Label>{t("manage_competitions.form_class") || "Class"}</Label>
-            <Select value={formClass} onValueChange={setFormClass} disabled={!formEducation || formEducation === "College" || formEducation === "Others"}>
-              <SelectTrigger>
-                <SelectValue placeholder={!formEducation ? (t("manage_competitions.form_class_select_edu") || "Select education first") : (formEducation === "College" || formEducation === "Others") ? (t("manage_competitions.form_class_not_applicable") || "Not applicable") : (t("manage_competitions.form_class_placeholder") || "Select class")} />
-              </SelectTrigger>
-              <SelectContent>
-                {formEducation === "SD" && (
-                  <>
-                    <SelectItem value="1">{t("manage_competitions.class_level") || "Grade"} 1</SelectItem>
-                    <SelectItem value="2">{t("manage_competitions.class_level") || "Grade"} 2</SelectItem>
-                    <SelectItem value="3">{t("manage_competitions.class_level") || "Grade"} 3</SelectItem>
-                    <SelectItem value="4">{t("manage_competitions.class_level") || "Grade"} 4</SelectItem>
-                    <SelectItem value="5">{t("manage_competitions.class_level") || "Grade"} 5</SelectItem>
-                    <SelectItem value="6">{t("manage_competitions.class_level") || "Grade"} 6</SelectItem>
-                  </>
-                )}
-                {formEducation === "SMP" && (
-                  <>
-                    <SelectItem value="7">{t("manage_competitions.class_level") || "Grade"} 7</SelectItem>
-                    <SelectItem value="8">{t("manage_competitions.class_level") || "Grade"} 8</SelectItem>
-                    <SelectItem value="9">{t("manage_competitions.class_level") || "Grade"} 9</SelectItem>
-                  </>
-                )}
-                {formEducation === "SMA" && (
-                  <>
-                    <SelectItem value="10">{t("manage_competitions.class_level") || "Grade"} 10</SelectItem>
-                    <SelectItem value="11">{t("manage_competitions.class_level") || "Grade"} 11</SelectItem>
-                    <SelectItem value="12">{t("manage_competitions.class_level") || "Grade"} 12</SelectItem>
-                  </>
-                )}
               </SelectContent>
             </Select>
           </div>
@@ -373,6 +385,80 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
           <Input id="comp-link" placeholder="https://..." value={formLink} onChange={(e) => setFormLink(e.target.value)} />
         </div>
       </div>
+
+      {/* Schedule Dialog */}
+      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-blue-500" />
+              {t("manage_competitions.form_schedule") || "Schedule"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("manage_competitions.phase_registration") || "Registration"}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input type="date" value={regStart} onChange={(e) => setRegStart(e.target.value)} className="flex-1" />
+                <span className="text-xs text-muted-foreground shrink-0">—</span>
+                <Input type="date" value={regEnd} onChange={(e) => setRegEnd(e.target.value)} className="flex-1" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("manage_competitions.phase_qualification") || "Qualification"}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input type="date" value={qualStart} onChange={(e) => setQualStart(e.target.value)} className="flex-1" />
+                <span className="text-xs text-muted-foreground shrink-0">—</span>
+                <Input type="date" value={qualEnd} onChange={(e) => setQualEnd(e.target.value)} className="flex-1" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("manage_competitions.phase_final") || "Final"}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input type="date" value={finalStart} onChange={(e) => setFinalStart(e.target.value)} className="flex-1" />
+                <span className="text-xs text-muted-foreground shrink-0">—</span>
+                <Input type="date" value={finalEnd} onChange={(e) => setFinalEnd(e.target.value)} className="flex-1" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setScheduleOpen(false)} className="cursor-pointer">{t("action.done") || "Done"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Dialog */}
+      <Dialog open={categoryOpen} onOpenChange={setCategoryOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag className="h-5 w-5 text-purple-500" />
+              {t("table.category") || "Category"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-wrap gap-2 py-3">
+            {CATEGORIES.map((cat) => (
+              <Badge
+                key={cat.id}
+                variant={formCategories.includes(cat.id) ? "default" : "outline"}
+                className="cursor-pointer font-normal border-dashed select-none text-sm px-3 py-1.5"
+                onClick={() => toggleCategory(cat.id)}
+              >
+                {t(cat.tKey) || cat.fallback}
+              </Badge>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setCategoryOpen(false)} className="cursor-pointer">{t("action.done") || "Done"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

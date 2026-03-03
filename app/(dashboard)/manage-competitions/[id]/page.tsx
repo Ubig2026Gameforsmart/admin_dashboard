@@ -25,8 +25,7 @@ import {
   Upload,
   X,
   MoreHorizontal,
-  GraduationCap,
-  BookOpen,
+  Image as ImageIcon,
 } from "lucide-react";
 
 import {
@@ -88,8 +87,7 @@ interface Player {
   paid: boolean;
   registeredAt: string;
   isFinalist?: boolean;
-  education?: string;
-  class?: string;
+  category?: string;
 }
 
 const DUMMY_DETAIL = {
@@ -167,15 +165,18 @@ export default function CompetitionDetailPage() {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount);
   }
 
-  const getEducationLabel = (edu: string) => {
-    switch (edu) {
-      case "SD": return t("manage_competitions.form_education_sd") || "Elementary School";
-      case "SMP": return t("manage_competitions.form_education_smp") || "Junior High School";
-      case "SMA": return t("manage_competitions.form_education_sma") || "Senior High School";
-      case "College": return t("manage_competitions.form_education_college") || "College/University";
-      case "Others": return t("manage_competitions.form_education_others") || "Others";
-      default: return edu;
-    }
+  const getCategoryLabel = (cat: string) => {
+    return cat.split(',').map(e => {
+      const key = e.trim();
+      switch (key) {
+        case "SD": return t("category.sd") || "SD";
+        case "SMP": return t("category.smp") || "SMP";
+        case "SMA": return t("category.sma") || "SMA/SMK";
+        case "College": return t("category.college") || "Mahasiswa";
+        case "Others": return t("category.others") || "Umum";
+        default: return key;
+      }
+    }).join(", ");
   };
 
   const [searchInput, setSearchInput] = useState("");
@@ -183,8 +184,9 @@ export default function CompetitionDetailPage() {
   const [activeTab, setActiveTab] = useState<"registered" | "paid" | "finalist">("registered");
   const [playerToToggle, setPlayerToToggle] = useState<Player | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [filterEducation, setFilterEducation] = useState<string>("all");
-  const [filterClass, setFilterClass] = useState<string>("all");
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [descExpanded, setDescExpanded] = useState(false);
 
   const handleSearch = () => setSearchQuery(searchInput);
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -209,13 +211,12 @@ export default function CompetitionDetailPage() {
   // Sort players by avg score descending for ranking
   const rankedPlayers = [...dummyPlayers].sort((a, b) => b.avgScore - a.avgScore);
 
-  // Filter players based on tab, search, education and class
+  // Filter players based on tab, search, and category
   const filteredPlayers = rankedPlayers.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTab = activeTab === "registered" || (activeTab === "paid" && p.paid) || (activeTab === "finalist" && p.isFinalist);
-    const matchesEducation = filterEducation === "all" || p.education === filterEducation;
-    const matchesClass = filterClass === "all" || p.class === filterClass;
-    return matchesSearch && matchesTab && matchesEducation && matchesClass;
+    const matchesCategory = filterCategory === "all" || p.category === filterCategory;
+    return matchesSearch && matchesTab && matchesCategory;
   });
 
   const getRank = (playerId: string) => rankedPlayers.findIndex((p) => p.id === playerId) + 1;
@@ -247,16 +248,17 @@ export default function CompetitionDetailPage() {
 
       {/* Title + Actions */}
       <div className="flex items-start justify-between">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-foreground">{detail.title}</h1>
-            <Badge variant="outline" className={`capitalize border ${cfg.className}`}>
-              {cfg.label}
-            </Badge>
+        <div className="space-y-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-3xl font-bold text-foreground line-clamp-2" title={detail.title}>{detail.title}</h1>
           </div>
 
           {/* Inline Stats */}
           <div className="flex items-center gap-x-3 gap-y-2 text-sm text-muted-foreground flex-wrap">
+            <Badge variant="outline" className={`capitalize border shrink-0 ${cfg.className}`}>
+              {cfg.label}
+            </Badge>
+            <span>•</span>
             <div className="flex items-center gap-1.5">
               <Users className="h-4 w-4" />
               <span><strong className="text-foreground">{totalRegistered.toLocaleString("id-ID")}</strong> {t("comp_detail.registered") || "Registered"}</span>
@@ -276,31 +278,33 @@ export default function CompetitionDetailPage() {
               </div>
             </div>
             <span>•</span>
-            {(detail.education || detail.class) && (
-              <>
-                <div className="flex items-center gap-1.5 pl-1.5">
-                  <GraduationCap className="h-4 w-4 text-purple-500" />
-                  <span>
-                    {detail.education ? getEducationLabel(detail.education) : "All Education"}
-                    {detail.class ? ` — ${t("manage_competitions.class_level") || "Grade"} ${detail.class}` : ""}
-                  </span>
-                </div>
-                <span>•</span>
-              </>
-            )}
             <div className="flex items-center gap-1.5">
               <CalendarDays className="h-4 w-4 text-blue-500" />
-              <span>{format(new Date(detail.start_date), "d MMM yyyy")} — {format(new Date(detail.end_date), "d MMM yyyy")}</span>
+              <span>
+                {detail.registration_start_date
+                  ? format(new Date(detail.registration_start_date), "d MMM yyyy")
+                  : "—"}
+                {" — "}
+                {(detail.final_end_date || detail.registration_end_date)
+                  ? format(new Date(detail.final_end_date || detail.registration_end_date), "d MMM yyyy")
+                  : "—"}
+              </span>
             </div>
             <span>•</span>
-            <div className="flex items-center gap-1.5">
+            <div 
+              className="flex items-center gap-1.5 cursor-help" 
+              title={`${t("comp_detail.registration_fee") || "Registration Fee"}: ${formatCurrency(detail.registration_fee || 0)}`}
+            >
               <Banknote className="h-4 w-4 text-yellow-500" />
               <span>{formatCurrency(detail.registration_fee || 0)}</span>
             </div>
             <span>•</span>
-            <div className="flex items-center gap-1.5">
+            <div 
+              className="flex items-center gap-1.5 cursor-help"
+              title={`${t("comp_detail.prize_pool") || "Prize Pool"}: ${formatCurrency(detail.prize_pool || 0)}`}
+            >
               <Gift className="h-4 w-4 text-rose-500" />
-              <span>{t("comp_detail.prize_pool") || "Total Prize"}: <strong className="text-foreground">{formatCurrency(detail.prize_pool || 0)}</strong></span>
+              <strong className="text-foreground">{formatCurrency(detail.prize_pool || 0)}</strong>
             </div>
           </div>
         </div>
@@ -314,23 +318,47 @@ export default function CompetitionDetailPage() {
       </div>
 
       {/* Poster + Description + Rules + Registration Link */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="flex flex-col md:flex-row items-start gap-8">
         {/* Poster */}
-        <div className="lg:col-span-1">
-          <div className="rounded-lg overflow-hidden border bg-muted">
-            <img
-              src={detail.poster_url || "/images/poster1.jpg"}
-              alt={detail.title}
-              className="w-full object-cover"
-            />
+        <div className="shrink-0">
+          <div 
+            className={`rounded-lg overflow-hidden border bg-muted/30 relative group transition-all duration-200 shadow-sm hover:shadow-md ${detail.poster_url ? "cursor-zoom-in" : ""}`}
+            style={{ width: "160px", height: "120px" }}
+            onClick={() => detail.poster_url && setIsImageModalOpen(true)}
+          >
+            {detail.poster_url ? (
+              <>
+                <img
+                  src={detail.poster_url}
+                  alt={detail.title}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                  <Search className="text-white opacity-0 group-hover:opacity-100 h-6 w-6 transition-opacity" />
+                </div>
+              </>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-muted border">
+                <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
+              </div>
+            )}
           </div>
         </div>
 
         {/* Info */}
-        <div className="lg:col-span-2 space-y-5">
+        <div className="flex-1 space-y-5 min-w-0">
           <div>
             <h3 className="text-sm font-semibold mb-1.5">{t("comp_detail.description") || "Description"}</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">{detail.description}</p>
+            <p className={`text-sm text-muted-foreground leading-relaxed ${!descExpanded ? "line-clamp-2" : ""}`}>{detail.description}</p>
+            {detail.description && detail.description.length > 150 && (
+              <button
+                type="button"
+                onClick={() => setDescExpanded(!descExpanded)}
+                className="text-xs text-primary hover:underline mt-1 cursor-pointer"
+              >
+                {descExpanded ? (t("action.show_less") || "Show less") : (t("action.show_all") || "Show more")}
+              </button>
+            )}
           </div>
 
           <div>
@@ -415,51 +443,17 @@ export default function CompetitionDetailPage() {
               </button>
             </div>
 
-            <Select value={filterEducation} onValueChange={(val) => { setFilterEducation(val); setFilterClass("all"); }}>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
               <SelectTrigger className="w-[180px] h-9">
-                <SelectValue placeholder={t("manage_competitions.form_education") || "Grade"} />
+                <SelectValue placeholder={t("table.category") || "Category"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t("comp_detail.filter_all_education") || "All Grades"}</SelectItem>
-                <SelectItem value="SD">{t("manage_competitions.form_education_sd") || "Elementary School"}</SelectItem>
-                <SelectItem value="SMP">{t("manage_competitions.form_education_smp") || "Junior High School"}</SelectItem>
-                <SelectItem value="SMA">{t("manage_competitions.form_education_sma") || "Senior High School"}</SelectItem>
-                <SelectItem value="College">{t("manage_competitions.form_education_college") || "College/University"}</SelectItem>
-                <SelectItem value="Others">{t("manage_competitions.form_education_others") || "Others"}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Class Filter */}
-            <Select value={filterClass} onValueChange={setFilterClass} disabled={filterEducation === "all" || filterEducation === "College" || filterEducation === "Others"}>
-              <SelectTrigger className="w-[150px] h-9">
-                <SelectValue placeholder={t("manage_competitions.form_class") || "Class"} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("comp_detail.filter_all_class") || "All Classes"}</SelectItem>
-                {filterEducation === "SD" && (
-                  <>
-                    <SelectItem value="1">{t("manage_competitions.class_level") || "Grade"} 1</SelectItem>
-                    <SelectItem value="2">{t("manage_competitions.class_level") || "Grade"} 2</SelectItem>
-                    <SelectItem value="3">{t("manage_competitions.class_level") || "Grade"} 3</SelectItem>
-                    <SelectItem value="4">{t("manage_competitions.class_level") || "Grade"} 4</SelectItem>
-                    <SelectItem value="5">{t("manage_competitions.class_level") || "Grade"} 5</SelectItem>
-                    <SelectItem value="6">{t("manage_competitions.class_level") || "Grade"} 6</SelectItem>
-                  </>
-                )}
-                {filterEducation === "SMP" && (
-                  <>
-                    <SelectItem value="7">{t("manage_competitions.class_level") || "Grade"} 7</SelectItem>
-                    <SelectItem value="8">{t("manage_competitions.class_level") || "Grade"} 8</SelectItem>
-                    <SelectItem value="9">{t("manage_competitions.class_level") || "Grade"} 9</SelectItem>
-                  </>
-                )}
-                {filterEducation === "SMA" && (
-                  <>
-                    <SelectItem value="10">{t("manage_competitions.class_level") || "Grade"} 10</SelectItem>
-                    <SelectItem value="11">{t("manage_competitions.class_level") || "Grade"} 11</SelectItem>
-                    <SelectItem value="12">{t("manage_competitions.class_level") || "Grade"} 12</SelectItem>
-                  </>
-                )}
+                <SelectItem value="all">{t("comp_detail.filter_all_category") || "All Categories"}</SelectItem>
+                <SelectItem value="SD">{t("category.sd") || "SD"}</SelectItem>
+                <SelectItem value="SMP">{t("category.smp") || "SMP"}</SelectItem>
+                <SelectItem value="SMA">{t("category.sma") || "SMA/SMK"}</SelectItem>
+                <SelectItem value="College">{t("category.college") || "Mahasiswa"}</SelectItem>
+                <SelectItem value="Others">{t("category.others") || "Umum"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -617,6 +611,21 @@ export default function CompetitionDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Image Preview Modal (Identical to list view) */}
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent className="max-w-lg p-2">
+          <DialogTitle className="sr-only">Poster Preview</DialogTitle>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium px-2 pt-2">{detail.title}</p>
+            <img
+              src={detail.poster_url}
+              alt={detail.title}
+              className="w-full rounded-md object-contain max-h-[70vh]"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

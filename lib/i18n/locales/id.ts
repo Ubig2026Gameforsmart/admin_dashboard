@@ -770,6 +770,7 @@ export const id: Record<string, string> = {
   "comp_detail.export": "Ekspor",
   "comp_detail.edit": "Edit",
   "comp_detail.prize_pool": "Total Hadiah",
+  "comp_detail.registration_fee": "Biaya Pendaftaran",
   "comp_detail.description": "Deskripsi",
   "comp_detail.rules": "Aturan",
   "comp_detail.reg_link": "Tautan Pendaftaran",
@@ -792,6 +793,33 @@ export const id: Record<string, string> = {
   "comp_detail.status_draft": "Draf",
   "comp_detail.status_completed": "Selesai",
   "comp_detail.status_coming_soon": "Segera Hadir",
-  "comp_detail.filter_all_education": "Semua Jenjang",
-  "comp_detail.filter_all_class": "Semua Kelas",
+  "comp_detail.filter_all_category": "Semua Kategori",
+
+  // Competition phases
+  "manage_competitions.phase_registration": "Registrasi",
+  "manage_competitions.phase_qualification": "Kualifikasi",
+  "manage_competitions.phase_final": "Final",
+
+  // Category short labels
+  "category.sd": "SD",
+  "category.smp": "SMP",
+  "category.sma": "SMA/SMK",
+  "category.college": "Mahasiswa",
+  "category.others": "Umum",
+
+  // Dialog labels
+  "manage_competitions.form_schedule": "Jadwal",
+  "manage_competitions.set_schedule": "Klik untuk atur jadwal...",
+  "manage_competitions.set_category": "Klik untuk atur kategori...",
+  "action.done": "Selesai",
+
+  // Manage Competitions Form
+  "manage_competitions.add_title": "Tambah Kompetisi",
+  "manage_competitions.form_title_placeholder": "mis. Cerdas Cermat Online - Sains",
+  "manage_competitions.form_description": "Deskripsi",
+  "manage_competitions.form_desc_placeholder": "Tulis detail kompetisi, hadiah...",
+  "manage_competitions.form_rules_placeholder": "1. Setiap peserta hanya boleh mendaftar satu kali...",
+  "manage_competitions.err_required": "Harap isi kolom wajib: judul, tanggal pendaftaran",
+  "manage_competitions.err_file_size": "Ukuran file melebihi batas 5MB",
+  "manage_competitions.err_save": "Gagal menyimpan kompetisi",
 };
