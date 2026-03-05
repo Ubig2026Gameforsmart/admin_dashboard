@@ -115,7 +115,7 @@ const navigation: NavItem[] = [
     ],
   },
   {
-    title: "Competition",
+    title: "nav.competition",
     href: "/competition",
     icon: Trophy,
     children: [
@@ -128,6 +128,16 @@ const navigation: NavItem[] = [
         title: "manage_competitions.title",
         href: "/manage-competitions",
         icon: ClipboardList,
+      },
+      {
+        title: "nav.competition_category",
+        href: "/category",
+        icon: Sliders,
+      },
+      {
+        title: "nav.receptionist",
+        href: "/receptionist",
+        icon: Users,
       },
     ],
   },

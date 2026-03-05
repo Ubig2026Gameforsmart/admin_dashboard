@@ -22,6 +22,9 @@ export const en: Record<string, string> = {
   "nav.state": "State",
   "nav.city": "City",
   "nav.appearance": "Appearance",
+  "nav.competition": "Competition",
+  "nav.competition_category": "Category",
+  "nav.receptionist": "Receptionist",
   "nav.collapse": "Collapse",
 
   // Header
@@ -796,8 +799,8 @@ export const en: Record<string, string> = {
   "comp_detail.status_coming_soon": "Coming Soon",
   "comp_detail.remove_confirm_title": "Remove from Finalist?",
   "comp_detail.add_confirm_title": "Move to Finalist?",
-  "comp_detail.remove_confirm_desc": "Are you sure you want to remove this player from the finalist list?",
-  "comp_detail.add_confirm_desc": "Are you sure you want to move this player to the finalist list?",
+  "comp_detail.remove_confirm_desc": "Are you sure you want to remove {{name}} from the finalist list?",
+  "comp_detail.add_confirm_desc": "Are you sure you want to move {{name}} to the finalist list?",
 
   // Competition phases
   "manage_competitions.phase_registration": "Registration",
@@ -826,4 +829,22 @@ export const en: Record<string, string> = {
   "manage_competitions.err_required": "Please fill required fields: title, registration dates",
   "manage_competitions.err_file_size": "File size exceeds 5MB limit",
   "manage_competitions.err_save": "Failed to save competition",
+  "manage_competitions.delete_confirm_title": "Delete Competition",
+  "manage_competitions.delete_confirm_desc": "Are you sure you want to delete {{name}}?",
+  "manage_competitions.delete_confirm_instruction": "Please type Delete Competition to confirm.",
+  "manage_competitions.delete_phrase": "Delete Competition",
+
+  // Receptionist
+  "receptionist.subtitle": "Select a competition to manage attendance",
+  "receptionist.participants": "Participants",
+  "receptionist.attendance": "Attendance",
+  "receptionist.total_participants": "Participants",
+  "receptionist.total_finalist": "Finalist",
+  "receptionist.attended": "Attended",
+  "receptionist.search_participant": "Search participant...",
+  "receptionist.search_attendance": "Search attendance...",
+  "receptionist.no_participants": "No participants found",
+  "receptionist.not_attended": "Not Attended",
+  "receptionist.all_attended": "All participants have attended!",
+  "receptionist.no_attendance": "No one has attended yet",
 };

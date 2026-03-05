@@ -161,8 +161,17 @@ export default function CompetitionDetailPage() {
     coming_soon: { label: t("comp_detail.status_coming_soon") || "Coming Soon", className: "bg-orange-500/15 text-orange-600 border-orange-200 dark:text-orange-400 dark:border-orange-800" },
   };
 
-  function formatCurrency(amount: number) {
-    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount);
+  function formatCurrency(val: any) {
+    if (!val) return "—";
+    if (typeof val === "string") {
+      // If it contains non-digit characters (except . or ,), assume it's already formatted or a special string (like "Free")
+      if (/[^0-9.,]/.test(val)) return val;
+      
+      const num = parseFloat(val.replace(/\./g, "").replace(/,/g, "."));
+      if (isNaN(num)) return val;
+      return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(num);
+    }
+    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(val);
   }
 
   const getCategoryLabel = (cat: string) => {
@@ -187,6 +196,7 @@ export default function CompetitionDetailPage() {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [descExpanded, setDescExpanded] = useState(false);
+  const [rulesExpanded, setRulesExpanded] = useState(false);
 
   const handleSearch = () => setSearchQuery(searchInput);
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -349,25 +359,46 @@ export default function CompetitionDetailPage() {
         <div className="flex-1 space-y-5 min-w-0">
           <div>
             <h3 className="text-sm font-semibold mb-1.5">{t("comp_detail.description") || "Description"}</h3>
-            <p className={`text-sm text-muted-foreground leading-relaxed ${!descExpanded ? "line-clamp-2" : ""}`}>{detail.description}</p>
-            {detail.description && detail.description.length > 150 && (
-              <button
-                type="button"
-                onClick={() => setDescExpanded(!descExpanded)}
-                className="text-xs text-primary hover:underline mt-1 cursor-pointer"
-              >
-                {descExpanded ? (t("action.show_less") || "Show less") : (t("action.show_all") || "Show more")}
-              </button>
-            )}
+            <div className="flex items-baseline gap-2 max-w-full overflow-hidden">
+              <p className={`text-sm text-muted-foreground leading-relaxed ${!descExpanded ? "truncate" : ""}`}>
+                {detail.description}
+              </p>
+              {detail.description && detail.description.length > 100 && (
+                <button
+                  type="button"
+                  onClick={() => setDescExpanded(!descExpanded)}
+                  className="text-xs text-primary hover:underline cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  {descExpanded ? (t("action.show_less") || "Show less") : (t("action.show_all") || "Show more")}
+                </button>
+              )}
+            </div>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold mb-1.5">{t("comp_detail.rules") || "Rules"}</h3>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              {(detail.rules || []).map((rule: string, i: number) => (
-                <li key={i}>{rule}</li>
-              ))}
-            </ul>
+            <div className="flex items-baseline gap-2 max-w-full overflow-hidden">
+              <div className={`text-sm text-muted-foreground ${!rulesExpanded ? "truncate" : ""}`}>
+                {rulesExpanded ? (
+                  <ul className="space-y-1">
+                    {(detail.rules || []).map((rule: string, i: number) => (
+                      <li key={i}>{i + 1}. {rule}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span>{detail.rules?.[0] || "—"}</span>
+                )}
+              </div>
+              {detail.rules && detail.rules.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setRulesExpanded(!rulesExpanded)}
+                  className="text-xs text-primary hover:underline cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  {rulesExpanded ? (t("action.show_less") || "Show less") : (t("action.show_all") || "Show all")}
+                </button>
+              )}
+            </div>
           </div>
 
           {detail.registration_link && (
@@ -589,12 +620,29 @@ export default function CompetitionDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {playerToToggle?.isFinalist ? (t("comp_detail.remove_confirm_title") || "Remove from Finalist?") : (t("comp_detail.add_confirm_title") || "Move to Finalist?")}
+              {playerToToggle?.isFinalist ? t("comp_detail.remove_confirm_title") : t("comp_detail.add_confirm_title")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {playerToToggle?.isFinalist 
-                ? (t("comp_detail.remove_confirm_desc") || `Are you sure you want to remove ${playerToToggle?.name || "this player"} from the finalist list?`)
-                : (t("comp_detail.add_confirm_desc") || `Are you sure you want to move ${playerToToggle?.name || "this player"} to the finalist list?`)}
+              {(() => {
+                const translationKey = playerToToggle?.isFinalist 
+                  ? "comp_detail.remove_confirm_desc" 
+                  : "comp_detail.add_confirm_desc";
+                const desc = t(translationKey);
+                
+                if (desc.includes("{{name}}")) {
+                  const parts = desc.split("{{name}}");
+                  return (
+                    <>
+                      {parts[0]}
+                      <span className="font-bold text-primary">
+                        {playerToToggle?.name}
+                      </span>
+                      {parts[1]}
+                    </>
+                  );
+                }
+                return desc;
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -12,9 +12,7 @@ import {
   Search,
   MoreHorizontal,
   Image as ImageIcon,
-  Edit,
   Trash2,
-  Eye,
   CalendarDays,
   Users,
   Upload,
@@ -35,19 +33,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable } from "@/components/dashboard/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -134,6 +124,10 @@ export function ManageCompetitionsClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [previewPoster, setPreviewPoster] = useState<{ url: string; title: string } | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Competition | null>(null);
   const [deleteConfirmationPhrase, setDeleteConfirmationPhrase] = useState("");
@@ -193,10 +187,149 @@ export function ManageCompetitionsClient() {
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSearch = () => setSearchQuery(searchInput);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginated = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleSearch = () => {
+    setSearchQuery(searchInput);
+    setCurrentPage(1);
+  };
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") handleSearch();
   };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const compColumns = [
+    {
+      key: "poster",
+      label: t("manage_competitions.table_poster") || "Poster",
+      render: (value: unknown, row: Record<string, unknown>) => {
+        const posterUrl = row.posterUrl as string | null;
+        const title = row.title as string;
+        return (
+          <div
+            className={`h-10 w-14 rounded overflow-hidden bg-muted flex items-center justify-center border shrink-0 ${posterUrl ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (posterUrl) setPreviewPoster({ url: posterUrl, title });
+            }}
+          >
+            {posterUrl ? (
+              <img src={posterUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <ImageIcon className="h-4 w-4 text-muted-foreground/30" />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "title",
+      label: t("manage_competitions.table_title") || "Title",
+      render: (value: unknown) => (
+        <span className="font-medium truncate block max-w-[250px]" title={value as string}>
+          {value as string}
+        </span>
+      ),
+    },
+    {
+      key: "categoryDisplay",
+      label: t("table.category") || "Category",
+      render: (value: unknown) => {
+        const cat = value as string;
+        return cat ? (
+          <span className="text-sm text-muted-foreground truncate block max-w-[150px]" title={cat}>{cat}</span>
+        ) : (
+          <span className="text-muted-foreground">\u2014</span>
+        );
+      },
+    },
+    {
+      key: "status",
+      label: t("manage_competitions.table_status") || "Status",
+      render: (value: unknown) => {
+        const status = value as string;
+        const cfg = statusConfig[status] || { label: status, className: "bg-gray-500/15 text-gray-500 border-gray-200" };
+        return (
+          <Badge variant="outline" className={`capitalize border ${cfg.className}`}>
+            {cfg.label}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "schedule",
+      label: t("manage_competitions.table_schedule") || "Schedule",
+      render: (value: unknown) => <span className="text-xs whitespace-nowrap">{value as string}</span>,
+    },
+    {
+      key: "participantCount",
+      label: t("manage_competitions.table_participants") || "Participants",
+      render: (value: unknown) => (
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <Users className="h-3.5 w-3.5" />
+          <span>{(value as number).toLocaleString("id-ID")}</span>
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      label: t("manage_competitions.table_actions") || "Actions",
+      render: (value: unknown, row: Record<string, unknown>) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              className="cursor-pointer text-destructive focus:bg-destructive focus:text-destructive-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                const comp = competitions.find(c => c.id === row.id);
+                if (comp) {
+                  setDeleteTarget(comp);
+                  setDeleteConfirmationPhrase("");
+                }
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {t("action.delete") || "Delete"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
+  const tableData = paginated.map((comp) => {
+    const catLabels = comp.category
+      ? comp.category.split(',').map((c: string) => c.trim()).join(', ')
+      : null;
+    const scheduleStart = comp.regStartDate ? format(new Date(comp.regStartDate), "d MMM yyyy") : "\u2014";
+    const scheduleEnd = (comp.finalEndDate || comp.regEndDate) ? format(new Date(comp.finalEndDate || comp.regEndDate), "d MMM yyyy") : "\u2014";
+    return {
+      id: comp.id,
+      poster: null,
+      posterUrl: comp.posterUrl,
+      title: comp.title,
+      categoryDisplay: catLabels,
+      status: comp.status,
+      schedule: `${scheduleStart} \u2014 ${scheduleEnd}`,
+      participantCount: comp.participantCount,
+      actions: null,
+    };
+  });
 
   const handleDeleteCompetition = async () => {
     if (!deleteTarget) return;
@@ -245,139 +378,23 @@ export function ManageCompetitionsClient() {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[60px]">{t("manage_competitions.table_poster") || "Poster"}</TableHead>
-              <TableHead>{t("manage_competitions.table_title") || "Title"}</TableHead>
-              <TableHead>{t("table.category") || "Category"}</TableHead>
-              <TableHead>{t("manage_competitions.table_status") || "Status"}</TableHead>
-              <TableHead>{t("manage_competitions.table_schedule") || "Schedule"}</TableHead>
-              <TableHead className="text-center">{t("manage_competitions.table_participants") || "Participants"}</TableHead>
-              <TableHead className="w-[60px] text-right">{t("manage_competitions.table_actions") || "Actions"}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-               <TableRow>
-                 <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                   Loading competitions...
-                 </TableCell>
-               </TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  {t("manage_competitions.no_found") || "No competitions found."}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((comp) => {
-                const cfg = statusConfig[comp.status];
-                return (
-                  <TableRow key={comp.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/manage-competitions/${comp.id}`)}>
-                    {/* Poster */}
-                    <TableCell>
-                      <div
-                        className={`h-10 w-14 rounded overflow-hidden bg-muted flex items-center justify-center border shrink-0 ${comp.posterUrl ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (comp.posterUrl) setPreviewPoster({ url: comp.posterUrl, title: comp.title });
-                        }}
-                      >
-                        {comp.posterUrl ? (
-                          <img src={comp.posterUrl} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <ImageIcon className="h-4 w-4 text-muted-foreground/30" />
-                        )}
-                      </div>
-                    </TableCell>
-
-                    {/* Title */}
-                    <TableCell>
-                      <span className="font-medium truncate block max-w-[250px]" title={comp.title}>
-                        {comp.title}
-                      </span>
-                    </TableCell>
-
-                    {/* Category */}
-                    <TableCell>
-                      {comp.category ? (() => {
-                        const labels = comp.category.split(',').map(c => {
-                          const key = c.trim();
-                          if (key === "SD") return t("category.sd") || "SD";
-                          if (key === "SMP") return t("category.smp") || "SMP";
-                          if (key === "SMA") return t("category.sma") || "SMA/SMK";
-                          if (key === "College") return t("category.college") || "Mahasiswa";
-                          if (key === "Others") return t("category.others") || "Umum";
-                          return key;
-                        });
-                        const fullText = labels.join(", ");
-                        return (
-                          <span
-                            className="text-sm text-muted-foreground truncate block max-w-[150px]"
-                            title={fullText}
-                          >
-                            {fullText}
-                          </span>
-                        );
-                      })() : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-
-                    {/* Status */}
-                    <TableCell>
-                      <Badge variant="outline" className={`capitalize border ${cfg.className}`}>
-                        {cfg.label}
-                      </Badge>
-                    </TableCell>
-
-                    {/* Schedule */}
-                    <TableCell>
-                      <div className="flex items-center gap-1.5 text-xs whitespace-nowrap">
-                        <span>{comp.regStartDate ? format(new Date(comp.regStartDate), "d MMM yyyy") : "—"}</span>
-                        <span className="text-muted-foreground">—</span>
-                        <span>{(comp.finalEndDate || comp.regEndDate) ? format(new Date(comp.finalEndDate || comp.regEndDate), "d MMM yyyy") : "—"}</span>
-                      </div>
-                    </TableCell>
-
-                    {/* Participants */}
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1 text-muted-foreground">
-                        <Users className="h-3.5 w-3.5" />
-                        <span>{comp.participantCount.toLocaleString("id-ID")}</span>
-                      </div>
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            className="cursor-pointer text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteTarget(comp);
-                              setDeleteConfirmationPhrase("");
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {t("action.delete") || "Delete"}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {isLoading ? (
+        <div className="rounded-xl border border-border bg-card overflow-hidden p-12 text-center text-muted-foreground">
+          Loading competitions...
+        </div>
+      ) : (
+        <DataTable
+          columns={compColumns}
+          data={tableData as Record<string, unknown>[]}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page: number) => {
+            setCurrentPage(page);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          onRowClick={(row) => router.push(`/manage-competitions/${row.id}`)}
+        />
+      )}
 
       {/* Poster Preview Dialog */}
       <Dialog open={!!previewPoster} onOpenChange={() => setPreviewPoster(null)}>
@@ -399,35 +416,70 @@ export function ManageCompetitionsClient() {
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Delete Competition</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              This action cannot be undone.
-            </p>
-            <Label className="text-sm font-medium mb-2 block">
-              Please type <span className="font-bold select-none">Delete Competition</span> to confirm.
-            </Label>
-            <Input
-              value={deleteConfirmationPhrase}
-              onChange={(e) => setDeleteConfirmationPhrase(e.target.value)}
-              placeholder="Type 'Delete Competition'"
-              autoComplete="off"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={deleteConfirmationPhrase !== "Delete Competition" || isDeleting}
-              onClick={handleDeleteCompetition}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
+          {!deleteTarget ? null : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-destructive">{t("manage_competitions.delete_confirm_title") || "Delete Competition"}</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                <div className="text-sm text-muted-foreground mb-4">
+                  {(() => {
+                    const desc = t("manage_competitions.delete_confirm_desc") || "This action cannot be undone. Are you sure you want to delete {{name}}?";
+                    if (desc.includes("{{name}}")) {
+                      const parts = desc.split("{{name}}");
+                      return (
+                        <p title={deleteTarget.title}>
+                          {parts[0]}
+                          <span className="font-bold text-primary">
+                            {deleteTarget.title.length > 40 
+                              ? deleteTarget.title.substring(0, 40) + "..." 
+                              : deleteTarget.title}
+                          </span>
+                          {parts[1]}
+                        </p>
+                      );
+                    }
+                    return desc;
+                  })()}
+                </div>
+                <Label className="text-sm font-medium mb-2 block">
+                  {(() => {
+                    const instr = t("manage_competitions.delete_confirm_instruction") || "Please type Delete Competition to confirm.";
+                    const phrase = t("manage_competitions.delete_phrase") || "Delete Competition";
+                    if (instr.includes(phrase)) {
+                      const parts = instr.split(phrase);
+                      return (
+                        <>
+                          {parts[0]}
+                          <span className="font-bold select-none text-destructive">"{phrase}"</span>
+                          {parts[1]}
+                        </>
+                      );
+                    }
+                    return instr;
+                  })()}
+                </Label>
+                <Input
+                  value={deleteConfirmationPhrase}
+                  onChange={(e) => setDeleteConfirmationPhrase(e.target.value)}
+                  placeholder={t("manage_competitions.delete_phrase") || "Type 'Delete Competition'"}
+                  autoComplete="off"
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
+                  {t("action.cancel") || "Cancel"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={deleteConfirmationPhrase !== (t("manage_competitions.delete_phrase") || "Delete Competition") || isDeleting}
+                  onClick={handleDeleteCompetition}
+                >
+                  {isDeleting ? "Deleting..." : t("action.delete") || "Delete"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

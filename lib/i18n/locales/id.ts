@@ -22,6 +22,9 @@ export const id: Record<string, string> = {
   "nav.state": "Provinsi",
   "nav.city": "Kota",
   "nav.appearance": "Tampilan",
+  "nav.competition": "Kompetisi",
+  "nav.competition_category": "Kategori",
+  "nav.receptionist": "Resepsionis",
   "nav.collapse": "Lipat",
 
   // Header
@@ -794,6 +797,10 @@ export const id: Record<string, string> = {
   "comp_detail.status_completed": "Selesai",
   "comp_detail.status_coming_soon": "Segera Hadir",
   "comp_detail.filter_all_category": "Semua Kategori",
+  "comp_detail.remove_confirm_title": "Hapus dari Finalis?",
+  "comp_detail.add_confirm_title": "Pindahkan ke Finalis?",
+  "comp_detail.remove_confirm_desc": "Apakah Anda yakin ingin menghapus {{name}} dari daftar finalis?",
+  "comp_detail.add_confirm_desc": "Apakah Anda yakin ingin memindahkan {{name}} ke daftar finalis?",
 
   // Competition phases
   "manage_competitions.phase_registration": "Registrasi",
@@ -822,4 +829,20 @@ export const id: Record<string, string> = {
   "manage_competitions.err_required": "Harap isi kolom wajib: judul, tanggal pendaftaran",
   "manage_competitions.err_file_size": "Ukuran file melebihi batas 5MB",
   "manage_competitions.err_save": "Gagal menyimpan kompetisi",
+  "manage_competitions.delete_confirm_title": "Hapus Kompetisi",
+  "manage_competitions.delete_confirm_desc": "Apakah Anda yakin ingin menghapus {{name}}?",
+  "manage_competitions.delete_confirm_instruction": "Silakan ketik Delete Competition untuk mengonfirmasi.",
+  "manage_competitions.delete_phrase": "Delete Competition",
+
+  // Receptionist
+  "receptionist.subtitle": "Pilih kompetisi untuk mengelola kehadiran",
+  "receptionist.participants": "Peserta",
+  "receptionist.attendance": "Kehadiran",
+  "receptionist.total_participants": "Peserta",
+  "receptionist.total_finalist": "Finalis",
+  "receptionist.attended": "Hadir",
+  "receptionist.search_participant": "Cari peserta...",
+  "receptionist.search_attendance": "Cari kehadiran...",
+  "receptionist.no_participants": "Tidak ada peserta ditemukan",
+  "receptionist.no_attendance": "Belum ada yang hadir",
 };

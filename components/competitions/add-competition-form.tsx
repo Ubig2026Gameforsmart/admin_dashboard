@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -44,22 +44,32 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
   const [finalEnd, setFinalEnd] = useState(initialData?.final_end_date ? new Date(initialData.final_end_date).toISOString().split('T')[0] : "");
   const [formStatus, setFormStatus] = useState(initialData?.status || "draft");
   const [formCategories, setFormCategories] = useState<string[]>(
-    initialData?.category ? initialData.category.split(",").map((s: string) => s.trim()) : []
+    initialData?.category ? initialData.category.split(",").map((s: string) => s.trim()).filter(Boolean) : []
   );
   const toggleCategory = (cat: string) => {
     setFormCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
     );
   };
-  const CATEGORIES = [
-    { id: "SD", tKey: "category.sd", fallback: "SD" },
-    { id: "SMP", tKey: "category.smp", fallback: "SMP" },
-    { id: "SMA", tKey: "category.sma", fallback: "SMA/SMK" },
-    { id: "College", tKey: "category.college", fallback: "Mahasiswa" },
-    { id: "Others", tKey: "category.others", fallback: "Umum" },
-  ];
-  const [formFee, setFormFee] = useState(initialData?.registration_fee?.toString() || "25000");
-  const [formPrize, setFormPrize] = useState(initialData?.prize_pool?.toString() || "5000000");
+
+  const [dbCategories, setDbCategories] = useState<string[]>([]);
+
+  // Fetch dynamic categories
+  useEffect(() => {
+    async function fetchCats() {
+      const { data } = await supabase
+        .from("competition_categories")
+        .select("name")
+        .eq("status", "active")
+        .order("name");
+      if (data) {
+        setDbCategories(data.map(d => d.name));
+      }
+    }
+    fetchCats();
+  }, [supabase]);
+  const [formFee, setFormFee] = useState(initialData?.registration_fee !== undefined ? String(initialData.registration_fee) : "");
+  const [formPrize, setFormPrize] = useState(initialData?.prize_pool !== undefined ? String(initialData.prize_pool) : "");
   const [formLink, setFormLink] = useState(initialData?.registration_link || "");
   const [formPosterFile, setFormPosterFile] = useState<File | null>(null);
   const [formPosterPreview, setFormPosterPreview] = useState<string | null>(initialData?.poster_url || null);
@@ -133,8 +143,8 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
           poster_url: uploadedPosterUrl,
           status: formStatus,
           category: formCategories.length > 0 ? formCategories.join(", ") : null,
-          registration_fee: Number(formFee),
-          prize_pool: Number(formPrize),
+          registration_fee: formFee,
+          prize_pool: formPrize,
           registration_link: formLink || null,
         };
         const { error } = await supabase.from("competitions").update(updateData).eq("id", compId);
@@ -159,8 +169,8 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
           poster_url: uploadedPosterUrl,
           status: formStatus,
           category: formCategories.length > 0 ? formCategories.join(", ") : null,
-          registration_fee: Number(formFee),
-          prize_pool: Number(formPrize),
+          registration_fee: formFee,
+          prize_pool: formPrize,
           registration_link: formLink || null,
         });
         if (error) throw error;
@@ -183,7 +193,10 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
   };
 
   const hasSchedule = regStart || regEnd || qualStart || qualEnd || finalStart || finalEnd;
-  const selectedCatLabels = CATEGORIES.filter(c => formCategories.includes(c.id)).map(c => t(c.tKey) || c.fallback);
+  const selectedCatLabels = formCategories;
+
+  // Ensure old categories or inactive ones selected still appear
+  const allAvailableCategories = Array.from(new Set([...dbCategories, ...formCategories]));
 
   return (
     <div className="space-y-6">
@@ -336,9 +349,9 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
           </div>
         </div>
 
-        {/* Status, Fee & Prize — full width */}
-        <div className="flex flex-wrap xl:flex-nowrap gap-4 w-full">
-          <div className="grid gap-2 w-[140px] shrink-0">
+        {/* Status, Fee & Prize — optimized layout */}
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="grid gap-2 w-[140px]">
             <Label>{t("manage_competitions.form_status") || "Status"}</Label>
             <Select value={formStatus} onValueChange={setFormStatus}>
               <SelectTrigger>
@@ -351,31 +364,21 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-2 w-[120px] shrink-0">
+          <div className="grid gap-2 w-[180px]">
             <Label>{t("manage_competitions.form_reg_fee") || "Registration Fee"}</Label>
-            <Select value={formFee} onValueChange={setFormFee}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="25000">Rp 25.000</SelectItem>
-                <SelectItem value="50000">Rp 50.000</SelectItem>
-                <SelectItem value="100000">Rp 100.000</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input 
+              value={formFee} 
+              onChange={(e) => setFormFee(e.target.value)} 
+              placeholder="Nominal / Description"
+            />
           </div>
-          <div className="grid gap-2 w-[120px] shrink-0">
+          <div className="grid gap-2 w-[180px]">
             <Label>{t("manage_competitions.form_prize") || "Total Prize"}</Label>
-            <Select value={formPrize} onValueChange={setFormPrize}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5000000">Rp 5.000.000</SelectItem>
-                <SelectItem value="10000000">Rp 10.000.000</SelectItem>
-                <SelectItem value="20000000">Rp 20.000.000</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input 
+              value={formPrize} 
+              onChange={(e) => setFormPrize(e.target.value)} 
+              placeholder="Nominal / Reward info"
+            />
           </div>
         </div>
 
@@ -443,14 +446,14 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-wrap gap-2 py-3">
-            {CATEGORIES.map((cat) => (
+            {allAvailableCategories.map((catName) => (
               <Badge
-                key={cat.id}
-                variant={formCategories.includes(cat.id) ? "default" : "outline"}
+                key={catName}
+                variant={formCategories.includes(catName) ? "default" : "outline"}
                 className="cursor-pointer font-normal border-dashed select-none text-sm px-3 py-1.5"
-                onClick={() => toggleCategory(cat.id)}
+                onClick={() => toggleCategory(catName)}
               >
-                {t(cat.tKey) || cat.fallback}
+                {catName}
               </Badge>
             ))}
           </div>
