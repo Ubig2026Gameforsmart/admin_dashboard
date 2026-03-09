@@ -19,6 +19,7 @@ import { useTranslation } from "@/lib/i18n";
 interface Column {
   key: string;
   label: string;
+  align?: "left" | "center" | "right";
   render?: (value: unknown, row: Record<string, unknown>) => React.ReactNode;
 }
 
@@ -70,7 +71,11 @@ export function DataTable({
             {columns.map((column) => (
               <TableHead
                 key={column.key}
-                className="text-muted-foreground font-medium"
+                className={cn(
+                  "text-muted-foreground font-medium",
+                  column.align === "right" && "text-right pr-6",
+                  column.align === "center" && "text-center"
+                )}
               >
                 {column.label}
               </TableHead>

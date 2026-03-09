@@ -10,11 +10,13 @@ import {
   CheckCircle2,
   UserCheck,
   Users,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/shared/search-input";
 
 interface Participant {
   id: string;
@@ -39,22 +41,11 @@ export default function ReceptionistDetailPage() {
   const [competition, setCompetition] = useState<CompetitionInfo | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [participantInput, setParticipantInput] = useState("");
   const [participantQuery, setParticipantQuery] = useState("");
-  
-  const [attendanceInput, setAttendanceInput] = useState("");
   const [attendanceQuery, setAttendanceQuery] = useState("");
 
-  const handleParticipantSearch = () => setParticipantQuery(participantInput);
-  const handleAttendanceSearch = () => setAttendanceQuery(attendanceInput);
-
-  const handleParticipantKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleParticipantSearch();
-  };
-
-  const handleAttendanceKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleAttendanceSearch();
-  };
+  const handleParticipantSearch = (val: string) => setParticipantQuery(val);
+  const handleAttendanceSearch = (val: string) => setAttendanceQuery(val);
 
   useEffect(() => {
     async function fetchData() {
@@ -198,26 +189,19 @@ export default function ReceptionistDetailPage() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
-                {t("receptionist.participants") || "Participants"}
+                {t("competition.finalist") || "Finalist"}
                 <Badge variant="secondary" className="ml-1 text-xs">
                   {totalNotAttended}
                 </Badge>
               </h2>
             </div>
             <div className="relative">
-              <Input
-                placeholder={t("receptionist.search_participant") || "Search participant..."}
-                value={participantInput}
-                onChange={(e) => setParticipantInput(e.target.value)}
-                onKeyDown={handleParticipantKeyDown}
-                className="pr-10 h-9 text-sm"
+              <SearchInput
+                placeholder={t("competition.search_finalist") || "Search finalist..."}
+                value={participantQuery}
+                onSearch={handleParticipantSearch}
+                className="h-9 text-sm"
               />
-              <button
-                onClick={handleParticipantSearch}
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-              >
-                <Search className="h-3.5 w-3.5" />
-              </button>
             </div>
           </div>
           <div className="divide-y divide-border max-h-[60vh] overflow-y-auto">
@@ -283,19 +267,12 @@ export default function ReceptionistDetailPage() {
               </h2>
             </div>
             <div className="relative">
-              <Input
+              <SearchInput
                 placeholder={t("receptionist.search_attendance") || "Search attendance..."}
-                value={attendanceInput}
-                onChange={(e) => setAttendanceInput(e.target.value)}
-                onKeyDown={handleAttendanceKeyDown}
-                className="pr-10 h-9 text-sm"
+                value={attendanceQuery}
+                onSearch={handleAttendanceSearch}
+                className="h-9 text-sm"
               />
-              <button
-                onClick={handleAttendanceSearch}
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-              >
-                <Search className="h-3.5 w-3.5" />
-              </button>
             </div>
           </div>
           <div className="divide-y divide-border max-h-[60vh] overflow-y-auto">
