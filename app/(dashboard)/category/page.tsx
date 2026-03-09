@@ -8,6 +8,7 @@ import { Search, Plus, Edit2, Archive, ArchiveRestore } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/shared/search-input";
 import { DataTable } from "@/components/dashboard/data-table";
 import {
   Dialog,
@@ -40,7 +41,6 @@ export default function CategoryPage() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -106,11 +106,6 @@ export default function CategoryPage() {
     }
   }
 
-  const handleSearch = () => setSearchQuery(searchInput);
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSearch();
-  };
-
   const filtered = categories.filter((c) =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -167,6 +162,7 @@ export default function CategoryPage() {
     {
       key: "actions",
       label: t("table.actions") || "Actions",
+      align: "right" as const,
       render: (value: unknown, row: Record<string, unknown>) => {
         const cat = categories.find((c) => c.id === row.id);
         if (!cat) return null;
@@ -308,19 +304,12 @@ export default function CategoryPage() {
         </h1>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Input
+            <SearchInput
               placeholder={t("manage_competitions.search_placeholder") || "Search categories..."}
-              className="pr-10 w-64 bg-background border-border"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={handleKeyDown}
+              className="w-64 bg-background border-border text-sm h-9"
+              value={searchQuery}
+              onSearch={(val) => setSearchQuery(val)}
             />
-            <button
-              onClick={handleSearch}
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-            >
-              <Search className="h-3.5 w-3.5" />
-            </button>
           </div>
           <Button onClick={() => handleOpenDialog()}>
             <Plus className="mr-2 h-4 w-4" />
