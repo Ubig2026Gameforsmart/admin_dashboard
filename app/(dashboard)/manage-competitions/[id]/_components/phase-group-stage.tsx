@@ -18,6 +18,16 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
@@ -28,6 +38,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, ChevronDown } from "lucide-react";
 import { LocalBracketView } from "./local-bracket-view";
 
@@ -77,9 +88,11 @@ export function PhaseGroupStage({
   );
   const [assignDialog, setAssignDialog] = useState<LocalGroup | null>(null);
   const [quizDialog, setQuizDialog] = useState<LocalGroup | null>(null);
+  const [quizSearch, setQuizSearch] = useState("");
   const [assignSearch, setAssignSearch] = useState("");
   const [assignSelected, setAssignSelected] = useState<string[]>([]);
   const [advanceSelected, setAdvanceSelected] = useState<Record<string, string[]>>({});
+  const [playerToUnAdvance, setPlayerToUnAdvance] = useState<{groupId: string, playerId: string, playerName: string} | null>(null);
 
   // All assigned player IDs across all groups
   const allAssignedIds = groups.flatMap((g) => g.members.map((m) => m.playerId));
@@ -150,12 +163,19 @@ export function PhaseGroupStage({
       groups.map((g) => {
         if (g.id !== groupId) return g;
         const has = g.quizIds.includes(quizId);
-        return {
+        const updatedGroup = {
           ...g,
           quizIds: has
             ? g.quizIds.filter((q) => q !== quizId)
             : [...g.quizIds, quizId],
         };
+        
+        // Sync local dialog state
+        if (quizDialog?.id === groupId) {
+          setQuizDialog(updatedGroup);
+        }
+        
+        return updatedGroup;
       })
     );
   };
@@ -357,19 +377,16 @@ export function PhaseGroupStage({
                                   checked={groupAdvance.includes(member.playerId) || member.isAdvanced}
                                   onCheckedChange={() => {
                                     if (member.isAdvanced) {
-                                      // Un-advance the player directly
-                                      onGroupsChange(
-                                        groups.map((g) =>
-                                          g.id === group.id
-                                            ? { ...g, members: g.members.map((m) => m.playerId === member.playerId ? { ...m, isAdvanced: false } : m) }
-                                            : g
-                                        )
-                                      );
+                                      setPlayerToUnAdvance({
+                                        groupId: group.id,
+                                        playerId: member.playerId,
+                                        playerName: member.playerName,
+                                      });
                                     } else {
                                       toggleAdvance(group.id, member.playerId);
                                     }
                                   }}
-                                  className="h-4 w-4"
+                                  className="h-4 w-4 bg-background border-muted-foreground/40"
                                 />
                                 <div className="flex items-center gap-2 min-w-0">
                                   <Avatar className="h-6 w-6">
@@ -439,46 +456,87 @@ export function PhaseGroupStage({
               variant="outline"
               className="shrink-0 h-9 px-3 text-xs"
               onClick={() => {
-                const availableFinalists = finalists.filter(
-                  (f) => !allAssignedIds.includes(f.id) && f.name.toLowerCase().includes(assignSearch.toLowerCase())
-                );
-                
-                const allSelected = availableFinalists.length > 0 && availableFinalists.every((f) => assignSelected.includes(f.id));
+                let availableRaw: DummyPlayer[] = [];
+                if (assignDialog?.sources && assignDialog.sources.length > 0) {
+                  const sourceGroups = groups.filter(g => assignDialog.sources!.includes(g.id));
+                  const advancedPlayerIds = sourceGroups.flatMap(g => g.members.filter(m => m.isAdvanced).map(m => m.playerId));
+                  const currentMemberIds = assignDialog.members.map(m => m.playerId);
+                  availableRaw = finalists.filter(f => advancedPlayerIds.includes(f.id) && !currentMemberIds.includes(f.id));
+                } else {
+                  availableRaw = finalists.filter((f) => !allAssignedIds.includes(f.id));
+                }
+
+                const availableFiltered = availableRaw.filter(f => f.name.toLowerCase().includes(assignSearch.toLowerCase()));
+                const allSelected = availableFiltered.length > 0 && availableFiltered.every((f) => assignSelected.includes(f.id));
                 
                 if (allSelected) {
                   setAssignSelected([]);
                 } else {
-                  setAssignSelected(availableFinalists.map((f) => f.id));
+                  setAssignSelected(availableFiltered.map((f) => f.id));
                 }
               }}
             >
               {(() => {
-                const availableFinalists = finalists.filter(
-                  (f) => !allAssignedIds.includes(f.id) && f.name.toLowerCase().includes(assignSearch.toLowerCase())
-                );
-                const allSelected = availableFinalists.length > 0 && availableFinalists.every((f) => assignSelected.includes(f.id));
+                let availableRaw: DummyPlayer[] = [];
+                if (assignDialog?.sources && assignDialog.sources.length > 0) {
+                  const sourceGroups = groups.filter(g => assignDialog.sources!.includes(g.id));
+                  const advancedPlayerIds = sourceGroups.flatMap(g => g.members.filter(m => m.isAdvanced).map(m => m.playerId));
+                  const currentMemberIds = assignDialog.members.map(m => m.playerId);
+                  availableRaw = finalists.filter(f => advancedPlayerIds.includes(f.id) && !currentMemberIds.includes(f.id));
+                } else {
+                  availableRaw = finalists.filter((f) => !allAssignedIds.includes(f.id));
+                }
+
+                const availableFiltered = availableRaw.filter(f => f.name.toLowerCase().includes(assignSearch.toLowerCase()));
+                const allSelected = availableFiltered.length > 0 && availableFiltered.every((f) => assignSelected.includes(f.id));
                 return allSelected ? t("competition.deselect_all") : t("competition.select_all");
               })()}
             </Button>
           </div>
           <div className="max-h-64 overflow-y-auto space-y-1 border rounded-md p-2">
-            {finalists
-              .filter((f) => !allAssignedIds.includes(f.id) && f.name.toLowerCase().includes(assignSearch.toLowerCase()))
-              .map((player) => {
-                const isSel = assignSelected.includes(player.id);
-                return (
-                  <button key={player.id} onClick={() => setAssignSelected((p) => isSel ? p.filter((x) => x !== player.id) : [...p, player.id])}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left text-sm transition-colors cursor-pointer ${isSel ? "bg-primary/10 border border-primary/30" : "hover:bg-muted/50"}`}>
-                    <input type="checkbox" checked={isSel} readOnly className="h-4 w-4 accent-primary" />
-                    <Avatar className="h-7 w-7"><AvatarFallback className="text-[10px]">{player.name.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-                    <span className="flex-1 truncate font-medium">{player.name}</span>
-                    <span className="text-xs text-muted-foreground">{player.avgScore.toFixed(1)} pts</span>
-                  </button>
-                );
-              })}
-            {finalists.filter((f) => !allAssignedIds.includes(f.id)).length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">{t("comp_detail.no_players")}</p>
-            )}
+            {(() => {
+              let availableRaw: DummyPlayer[] = [];
+              if (assignDialog?.sources && assignDialog.sources.length > 0) {
+                const sourceGroups = groups.filter(g => assignDialog.sources!.includes(g.id));
+                const advancedPlayerIds = sourceGroups.flatMap(g => g.members.filter(m => m.isAdvanced).map(m => m.playerId));
+                const currentMemberIds = assignDialog.members.map(m => m.playerId);
+                availableRaw = finalists.filter(f => advancedPlayerIds.includes(f.id) && !currentMemberIds.includes(f.id));
+              } else {
+                availableRaw = finalists.filter((f) => !allAssignedIds.includes(f.id));
+              }
+
+              const availableFiltered = availableRaw.filter(f => f.name.toLowerCase().includes(assignSearch.toLowerCase()));
+
+              if (availableFiltered.length === 0) {
+                return <p className="text-sm text-muted-foreground text-center py-4">{t("comp_detail.no_players")}</p>;
+              }
+
+              return (
+                <>
+                  {availableFiltered.map((player) => {
+                    const isSel = assignSelected.includes(player.id);
+                    return (
+                      <div key={player.id} 
+                        onClick={() => setAssignSelected((p) => isSel ? p.filter((x) => x !== player.id) : [...p, player.id])}
+                        role="button" 
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setAssignSelected((p) => isSel ? p.filter((x) => x !== player.id) : [...p, player.id]);
+                          }
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left text-sm transition-colors cursor-pointer ${isSel ? "bg-primary/10 border border-primary/30" : "hover:bg-muted/50"}`}>
+                        <input type="checkbox" checked={isSel} readOnly className="h-4 w-4 accent-primary" />
+                        <Avatar className="h-7 w-7"><AvatarFallback className="text-[10px]">{player.name.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+                        <span className="flex-1 truncate font-medium">{player.name}</span>
+                        <span className="text-xs text-muted-foreground">{player.avgScore.toFixed(1)} pts</span>
+                      </div>
+                    );
+                  })}
+                </>
+              );
+            })()}
           </div>
           <DialogFooter>
             <span className="text-xs text-muted-foreground mr-auto">{assignSelected.length} {t("competition.selected")}</span>
@@ -491,7 +549,7 @@ export function PhaseGroupStage({
       </Dialog>
 
       {/* Assign Quiz Dialog */}
-      <Dialog open={!!quizDialog} onOpenChange={(open) => { if (!open) setQuizDialog(null); }}>
+      <Dialog open={!!quizDialog} onOpenChange={(open) => { if (!open) { setQuizDialog(null); setQuizSearch(""); } }}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -499,31 +557,137 @@ export function PhaseGroupStage({
               {t("competition.assign_quiz")} — {quizDialog?.name}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            {quizzes.map((quiz) => {
-              const isAssigned = quizDialog?.quizIds.includes(quiz.id);
-              return (
-                <button key={quiz.id}
-                  onClick={() => quizDialog && handleAssignQuiz(quizDialog.id, quiz.id)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
-                    isAssigned ? "bg-primary/10 border-primary/30" : "hover:bg-muted/50"
-                  }`}>
-                  <div className="flex items-center gap-3">
-                    <Checkbox checked={!!isAssigned} disabled className="h-4 w-4" />
-                    <div className="text-left">
-                      <p className="font-medium">{quiz.title}</p>
-                      <p className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")} · {quiz.duration} {t("competition.minutes")}</p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="mb-2">
+            <SearchInput
+              placeholder={t("quiz.search") || "Search quiz..."}
+              value={quizSearch}
+              onSearch={(val) => setQuizSearch(val)}
+            />
           </div>
+          <Tabs defaultValue="public" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="public">{t("competition.public_quiz") || "Public Quiz"}</TabsTrigger>
+              <TabsTrigger value="my">{t("competition.my_quiz") || "My Quiz"}</TabsTrigger>
+            </TabsList>
+            
+            {/* Public Quiz Tab */}
+            <TabsContent value="public" className="space-y-2 mt-0">
+              {(() => {
+                const filteredQuizzes = quizzes.filter(q => q.title.toLowerCase().includes(quizSearch.toLowerCase()));
+                if (filteredQuizzes.length === 0) {
+                  return (
+                    <div className="text-center py-6 border rounded-lg border-dashed">
+                      <p className="text-sm text-muted-foreground">{t("competition.no_quizzes_found") || "No quizzes found."}</p>
+                    </div>
+                  );
+                }
+                return filteredQuizzes.map((quiz) => {
+                  const isAssigned = quizDialog?.quizIds.includes(quiz.id);
+                  return (
+                    <div key={quiz.id}
+                      onClick={() => quizDialog && handleAssignQuiz(quizDialog.id, quiz.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          if (quizDialog) handleAssignQuiz(quizDialog.id, quiz.id);
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
+                        isAssigned ? "bg-primary/10 border-primary/30" : "hover:bg-muted/50"
+                      }`}>
+                      <div className="flex items-center gap-3">
+                        <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 bg-background border-muted-foreground/40" />
+                        <div className="text-left">
+                          <p className="font-medium">{quiz.title}</p>
+                          <p className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </TabsContent>
+            
+            {/* My Quiz Tab */}
+            <TabsContent value="my" className="space-y-2 mt-0">
+              {(() => {
+                const filteredQuizzes = [...quizzes].reverse().filter(q => q.title.toLowerCase().includes(quizSearch.toLowerCase()));
+                if (filteredQuizzes.length === 0) {
+                  return (
+                    <div className="text-center py-6 border rounded-lg border-dashed">
+                      <p className="text-sm text-muted-foreground">{t("competition.no_quizzes_found") || "No quizzes found."}</p>
+                    </div>
+                  );
+                }
+                return filteredQuizzes.map((quiz) => {
+                  const isAssigned = quizDialog?.quizIds.includes(quiz.id);
+                  return (
+                    <div key={quiz.id}
+                      onClick={() => quizDialog && handleAssignQuiz(quizDialog.id, quiz.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          if (quizDialog) handleAssignQuiz(quizDialog.id, quiz.id);
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
+                        isAssigned ? "bg-primary/10 border-primary/30" : "hover:bg-muted/50"
+                      }`}>
+                      <div className="flex items-center gap-3">
+                        <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 bg-background border-muted-foreground/40" />
+                        <div className="text-left">
+                          <p className="font-medium">{quiz.title}</p>
+                          <p className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </TabsContent>
+          </Tabs>
           <DialogFooter>
             <Button variant="outline" onClick={() => setQuizDialog(null)}>{t("action.close")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Un-advance Confirmation Dialog */}
+      <AlertDialog open={!!playerToUnAdvance} onOpenChange={(open) => { if (!open) setPlayerToUnAdvance(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.are_you_sure") || "Are you sure?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(t("comp_detail.unadvance_confirm") || `Are you sure you want to revoke {name}'s advanced status?`).replace("{name}", playerToUnAdvance?.playerName || "")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("action.cancel") || "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (playerToUnAdvance) {
+                  onGroupsChange(
+                    groups.map((g) =>
+                      g.id === playerToUnAdvance.groupId
+                        ? { ...g, members: g.members.map((m) => m.playerId === playerToUnAdvance.playerId ? { ...m, isAdvanced: false } : m) }
+                        : g
+                    )
+                  );
+                  setPlayerToUnAdvance(null);
+                  toast.success(t("comp_detail.unadvance_success") || "Advanced status revoked");
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("action.revoke") || "Revoke"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Bracket Visualization */}
       {groups.length > 0 && (

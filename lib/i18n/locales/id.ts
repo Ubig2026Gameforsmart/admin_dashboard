@@ -914,4 +914,13 @@ export const id: Record<string, string> = {
   "competition.winner_2nd": "Juara 2",
   "competition.winner_3rd": "Juara 3",
   "competition.participants_total": "peserta",
+  "competition.public_quiz": "Kuis Publik",
+  "competition.my_quiz": "Kuis Saya",
+  "competition.no_quizzes_found": "Kuis tidak ditemukan.",
+
+  // Un-advance Confirm Dialog
+  "common.are_you_sure": "Apakah Anda yakin?",
+  "comp_detail.unadvance_confirm": "Apakah Anda yakin ingin mencabut status lolos {name}?",
+  "action.revoke": "Cabut Status",
+  "comp_detail.unadvance_success": "Status lolos berhasil dicabut",
 };
