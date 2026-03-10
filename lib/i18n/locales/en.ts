@@ -916,4 +916,13 @@ export const en: Record<string, string> = {
   "competition.winner_2nd": "2nd Place",
   "competition.winner_3rd": "3rd Place",
   "competition.participants_total": "participants",
+  "competition.public_quiz": "Public Quiz",
+  "competition.my_quiz": "My Quiz",
+  "competition.no_quizzes_found": "No quizzes found.",
+
+  // Un-advance Confirm Dialog
+  "common.are_you_sure": "Are you sure?",
+  "comp_detail.unadvance_confirm": "Are you sure you want to revoke {name}'s advanced status?",
+  "action.revoke": "Revoke",
+  "comp_detail.unadvance_success": "Advanced status revoked successfully",
 };

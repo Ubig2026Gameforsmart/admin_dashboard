@@ -84,9 +84,17 @@ export function AssignParticipantsDialog({
             available.map((player) => {
               const isSelected = selected.includes(player.id);
               return (
-                <button
+                <div
                   key={player.id}
                   onClick={() => togglePlayer(player.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      togglePlayer(player.id);
+                    }
+                  }}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left text-sm transition-colors cursor-pointer ${
                     isSelected
                       ? "bg-primary/10 border border-primary/30"
@@ -110,7 +118,7 @@ export function AssignParticipantsDialog({
                   <span className="text-xs text-muted-foreground">
                     {player.avgScore.toFixed(1)} pts
                   </span>
-                </button>
+                </div>
               );
             })
           )}
