@@ -83,7 +83,7 @@ export function PhaseCompleted({ groups }: PhaseCompletedProps) {
           const cfg = podiumConfig[idx];
           return (
             <div
-              key={player.playerId}
+              key={`${player.playerId}-${player.groupName}`}
               className={`rounded-xl border-2 bg-gradient-to-b p-6 text-center space-y-3 transition-shadow hover:shadow-lg ${cfg.bg}`}
             >
               {cfg.icon}
@@ -93,10 +93,10 @@ export function PhaseCompleted({ groups }: PhaseCompletedProps) {
                     {player.playerName.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <h3 className={`font-bold text-base ${cfg.textColor}`}>
+                <h3 className={`font-bold text-base ${cfg.textColor} truncate max-w-full`} title={player.playerName}>
                   {player.playerName}
                 </h3>
-                <p className="text-xs text-muted-foreground">{player.groupName}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-full" title={player.groupName}>{player.groupName}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">{cfg.label}</p>
@@ -127,7 +127,7 @@ export function PhaseCompleted({ groups }: PhaseCompletedProps) {
             <span className="text-center">{t("competition.group_label")}</span>
           </div>
           {rest.map((player, idx) => (
-            <div key={player.playerId}
+            <div key={`${player.playerId}-${player.groupName}`}
               className="grid grid-cols-[50px_1fr_80px_80px_100px] gap-2 items-center px-4 py-2 text-sm border-b last:border-b-0">
               <span className="text-center text-muted-foreground">{idx + 4}</span>
               <div className="flex items-center gap-2 min-w-0">
@@ -144,7 +144,7 @@ export function PhaseCompleted({ groups }: PhaseCompletedProps) {
                 <Clock className="h-3 w-3" />
                 <span className="font-mono text-xs">{formatTime(player.totalTime)}</span>
               </div>
-              <span className="text-center text-xs text-muted-foreground">{player.groupName}</span>
+              <span className="text-center text-xs text-muted-foreground truncate" title={player.groupName}>{player.groupName}</span>
             </div>
           ))}
         </div>

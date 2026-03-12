@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SearchInput } from "@/components/shared/search-input";
 
 interface LocalBracketViewProps {
   groups: LocalGroup[];
@@ -27,6 +28,7 @@ function formatTime(seconds: number): string {
 export function LocalBracketView({ groups }: LocalBracketViewProps) {
   const { t } = useTranslation();
   const [selectedGroup, setSelectedGroup] = useState<LocalGroup | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [containerWidth, setContainerWidth] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -276,45 +278,68 @@ export function LocalBracketView({ groups }: LocalBracketViewProps) {
          </div>
       </div>
 
-      <Dialog open={!!selectedGroup} onOpenChange={(open) => { if (!open) setSelectedGroup(null); }}>
+      <Dialog open={!!selectedGroup} onOpenChange={(open) => { if (!open) { setSelectedGroup(null); setSearchQuery(""); } }}>
         <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-yellow-500" />
-              {selectedGroup?.name}
+          <DialogHeader className="flex flex-row items-center justify-between pr-6 gap-4">
+            <DialogTitle className="flex items-center gap-2 min-w-0">
+              <Trophy className="h-5 w-5 text-yellow-500 shrink-0" />
+              <span className="truncate" title={selectedGroup?.name}>{selectedGroup?.name}</span>
               {selectedGroup?.stage && (
-                <Badge variant="outline" className="text-[10px] h-5 ml-2 font-normal">
+                <Badge variant="outline" className="text-[10px] h-5 shrink-0 font-normal">
                   {selectedGroup.stage}
                 </Badge>
               )}
             </DialogTitle>
+            <div className="w-56 shrink-0 mt-0">
+              <SearchInput
+                placeholder={t("comp_detail.search_player") || "Search player..."}
+                value={searchQuery}
+                onSearch={setSearchQuery}
+                className="w-full h-8 text-xs"
+              />
+            </div>
           </DialogHeader>
-          <div className="mt-2">
+          <div className="mt-3 flex flex-col gap-3">
             {selectedGroup?.members.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">{t("competition.no_members")}</p>
             ) : (
               <div className="border rounded-md overflow-hidden">
-                <div className="grid grid-cols-[1fr_80px_80px_40px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b bg-muted/30">
+                <div className={`grid ${selectedGroup?.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[1fr_80px_80px_40px]"} gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b bg-muted/30`}>
+                  {selectedGroup?.stage === "Champion" && <span className="text-center">#</span>}
                   <span>{t("comp_detail.table_player") || "Player"}</span>
                   <span className="text-center">{t("comp_detail.table_avg") || "Score"}</span>
                   <span className="text-center">{t("competition.time") || "Time"}</span>
                   <span />
                 </div>
-                <div className="max-h-[60vh] overflow-y-auto w-full">
+                <div className="max-h-[50vh] overflow-y-auto w-full">
                   {[...(selectedGroup?.members || [])]
+                    .filter(m => m.playerName.toLowerCase().includes(searchQuery.toLowerCase()))
                     .sort((a, b) => b.score - a.score)
-                    .map((member) => (
+                    .map((member, idx) => (
                       <div key={member.playerId}
-                        className={`grid grid-cols-[1fr_80px_80px_40px] gap-2 items-center px-4 py-2 text-sm border-b last:border-b-0 ${
+                        className={`grid ${selectedGroup?.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[1fr_80px_80px_40px]"} gap-2 items-center px-4 py-2.5 text-sm border-b last:border-b-0 ${
                           member.isAdvanced ? "bg-emerald-500/5" : ""
                         }`}>
+                        {selectedGroup?.stage === "Champion" && (
+                          <span className={`text-center text-xs font-bold ${
+                            idx === 0 ? "text-yellow-500" :
+                            idx === 1 ? "text-gray-400" :
+                            idx === 2 ? "text-orange-500" :
+                            "text-muted-foreground"
+                          }`}>#{idx + 1}</span>
+                        )}
                         <div className="flex items-center gap-3 min-w-0 pr-1">
-                          <Avatar className="h-7 w-7">
-                            <AvatarFallback className="text-[10px]">{member.playerName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="text-[11px] font-medium">{member.playerName.substring(0, 2).toUpperCase()}</AvatarFallback>
                           </Avatar>
-                          <span className={`font-medium truncate ${member.isAdvanced ? "text-emerald-600" : ""}`} title={member.playerName}>
-                            {member.playerName}
-                          </span>
+                          <div className="flex flex-col min-w-0">
+                            <span className={`font-semibold text-sm truncate ${member.isAdvanced ? "text-emerald-600" : ""}`} title={member.playerName}>
+                              {member.playerName}
+                            </span>
+                            <span className="text-xs text-muted-foreground truncate" title={`@${member.playerName.toLowerCase().replace(/\\s+/g, '')}`}>
+                              @{member.playerName.toLowerCase().replace(/\s+/g, '')}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center justify-center gap-1">
                           <span className="font-mono font-medium">{member.score}</span>

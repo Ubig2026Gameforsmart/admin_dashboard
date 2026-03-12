@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { DummyPlayer, MockQuiz } from "@/types/competition";
 import {
   Plus, Trash2, Users, UserPlus, BookOpen, Trophy, Clock,
-  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp,
+  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,9 +83,8 @@ export function PhaseGroupStage({
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupStage, setNewGroupStage] = useState("Semifinal");
   const [newGroupSources, setNewGroupSources] = useState<string[]>([]);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-    new Set(groups.length > 0 ? [groups[0].id] : [])
-  );
+  const [detailDialog, setDetailDialog] = useState<LocalGroup | null>(null);
+  const [detailSearch, setDetailSearch] = useState("");
   const [assignDialog, setAssignDialog] = useState<LocalGroup | null>(null);
   const [quizDialog, setQuizDialog] = useState<LocalGroup | null>(null);
   const [quizSearch, setQuizSearch] = useState("");
@@ -298,7 +297,6 @@ export function PhaseGroupStage({
       ) : (
         <div className="space-y-3">
           {groups.map((group) => {
-            const isExpanded = expandedGroups.has(group.id);
             const groupAdvance = advanceSelected[group.id] || [];
             const advancedCount = group.members.filter((m) => m.isAdvanced).length;
 
@@ -306,15 +304,11 @@ export function PhaseGroupStage({
               <div key={group.id} className="rounded-lg border bg-card overflow-hidden">
                 {/* Group Header */}
                 <div
-                  className="flex items-center justify-between p-4 cursor-pointer select-none"
-                  onClick={() => setExpandedGroups(prev => {
-                    const next = new Set(prev);
-                    if (isExpanded) next.delete(group.id); else next.add(group.id);
-                    return next;
-                  })}
+                  className="flex items-center justify-between p-4 cursor-pointer select-none hover:bg-muted/30 transition-colors"
+                  onClick={() => setDetailDialog(group)}
                 >
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-semibold text-sm">{group.name}</h3>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <h3 className="font-semibold text-sm truncate" title={group.name}>{group.name}</h3>
                     {group.stage && (
                       <Badge variant="outline" className="text-[10px] h-5">
                         {group.stage}
@@ -335,10 +329,12 @@ export function PhaseGroupStage({
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                      onClick={(e) => { e.stopPropagation(); setQuizDialog(group); }}>
-                      <BookOpen className="h-3 w-3" /> {t("competition.assign_quiz")}
-                    </Button>
+                    {group.stage !== "Champion" && (
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                        onClick={(e) => { e.stopPropagation(); setQuizDialog(group); }}>
+                        <BookOpen className="h-3 w-3" /> {t("competition.assign_quiz")}
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
                       onClick={(e) => { e.stopPropagation(); setAssignDialog(group); }}>
                       <UserPlus className="h-3 w-3" /> {t("competition.assign_finalist")}
@@ -347,93 +343,144 @@ export function PhaseGroupStage({
                       onClick={(e) => { e.stopPropagation(); handleDeleteGroup(group.id); }}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                    {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />}
                   </div>
                 </div>
-
-                {/* Expanded Members */}
-                {isExpanded && (
-                  <div className="border-t">
-                    {group.members.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-6">{t("competition.no_members")}</p>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-[28px_1fr_70px_70px_28px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b bg-muted/30">
-                          <span />
-                          <span>{t("comp_detail.table_player")}</span>
-                          <span className="text-center">{t("comp_detail.table_avg")}</span>
-                          <span className="text-center">{t("competition.time")}</span>
-                          <span />
-                        </div>
-                        <div className="max-h-52 overflow-y-auto">
-                          {[...group.members]
-                            .sort((a, b) => b.score - a.score)
-                            .map((member, idx) => (
-                              <div key={member.playerId}
-                                className={`grid grid-cols-[28px_1fr_70px_70px_28px] gap-2 items-center px-4 py-1.5 text-xs border-b last:border-b-0 ${
-                                  member.isAdvanced ? "bg-emerald-500/5" : groupAdvance.includes(member.playerId) ? "bg-primary/5" : ""
-                                }`}>
-                                <Checkbox
-                                  checked={groupAdvance.includes(member.playerId) || member.isAdvanced}
-                                  onCheckedChange={() => {
-                                    if (member.isAdvanced) {
-                                      setPlayerToUnAdvance({
-                                        groupId: group.id,
-                                        playerId: member.playerId,
-                                        playerName: member.playerName,
-                                      });
-                                    } else {
-                                      toggleAdvance(group.id, member.playerId);
-                                    }
-                                  }}
-                                  className="h-4 w-4 bg-background border-muted-foreground/40"
-                                />
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <Avatar className="h-6 w-6">
-                                    <AvatarFallback className="text-[9px]">{member.playerName.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                  </Avatar>
-                                  <span className={`font-medium truncate ${member.isAdvanced ? "text-emerald-600" : ""}`}>
-                                    {member.playerName}
-                                  </span>
-                                  {idx < 3 && (
-                                    <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold shrink-0 ${
-                                      idx === 0 ? "bg-yellow-500/20 text-yellow-600" :
-                                      idx === 1 ? "bg-gray-300/20 text-gray-500" :
-                                      "bg-orange-500/20 text-orange-600"
-                                    }`}>{idx + 1}</span>
-                                  )}
-                                </div>
-                                <div className="flex items-center justify-center gap-1">
-                                  <Trophy className="h-3 w-3 text-yellow-500" />
-                                  <span className="font-mono font-medium">{member.score}</span>
-                                </div>
-                                <div className="flex items-center justify-center gap-1 text-muted-foreground">
-                                  <Clock className="h-3 w-3" />
-                                  <span className="font-mono">{formatTime(member.timeSeconds)}</span>
-                                </div>
-                                <div className="flex justify-center">
-                                  {member.isAdvanced && <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />}
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-                        {groupAdvance.length > 0 && (
-                          <div className="px-4 py-2 border-t bg-muted/20">
-                            <Button size="sm" className="gap-1.5 h-7 text-xs w-full" onClick={() => handleAdvance(group.id)}>
-                              <ArrowUpRight className="h-3.5 w-3.5" />
-                              {t("competition.advance_selected")} ({groupAdvance.length})
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
         </div>
       )}
+
+      <Dialog open={!!detailDialog} onOpenChange={(open) => { if (!open) { setDetailDialog(null); setDetailSearch(""); } }}>
+        <DialogContent className="sm:max-w-[600px]">
+          {detailDialog && (() => {
+            const group = detailDialog;
+            const groupAdvance = advanceSelected[group.id] || [];
+            return (
+              <>
+                <DialogHeader className="flex flex-row items-center justify-between pr-6 gap-4">
+                  <DialogTitle className="flex items-center gap-2 min-w-0">
+                    <Trophy className="h-5 w-5 text-yellow-500 shrink-0" />
+                    <span className="truncate" title={`${group.name} ${t("competition.members")}`}>{group.name} {t("competition.members")}</span>
+                    {group.stage && (
+                      <Badge variant="outline" className="text-[10px] h-5 shrink-0 font-normal">
+                        {group.stage}
+                      </Badge>
+                    )}
+                  </DialogTitle>
+                  <div className="w-56 shrink-0 mt-0">
+                    <SearchInput
+                      placeholder={t("comp_detail.search_player") || "Search player..."}
+                      value={detailSearch}
+                      onSearch={setDetailSearch}
+                      className="w-full h-8 text-xs"
+                    />
+                  </div>
+                </DialogHeader>
+                <div className="mt-3 flex flex-col gap-3">
+                  {group.members.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">{t("competition.no_members")}</p>
+                  ) : (
+                    <div className="border rounded-md overflow-hidden">
+                      <div className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px]"} gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b bg-muted/30`}>
+                        {group.stage === "Champion" ? <span className="text-center">#</span> : <span />}
+                        <span>{t("comp_detail.table_player") || "Player"}</span>
+                        <span className="text-center">{t("comp_detail.table_avg") || "Score"}</span>
+                        <span className="text-center">{t("competition.time") || "Time"}</span>
+                        <span />
+                      </div>
+                      <div className="max-h-[50vh] overflow-y-auto w-full">
+                        {[...group.members]
+                          .filter(m => m.playerName.toLowerCase().includes(detailSearch.toLowerCase()))
+                          .sort((a, b) => b.score - a.score)
+                          .map((member, idx) => (
+                            <div key={member.playerId}
+                              className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px]"} gap-2 items-center px-4 py-2.5 text-sm border-b last:border-b-0 transition-colors ${
+                                member.isAdvanced ? "bg-emerald-500/5" : groupAdvance.includes(member.playerId) ? "bg-primary/5" : ""
+                              } ${group.stage !== "Champion" ? "cursor-pointer hover:bg-muted/40" : ""}`}
+                              onClick={() => {
+                                if (group.stage === "Champion") return;
+                                if (member.isAdvanced) {
+                                  setPlayerToUnAdvance({
+                                    groupId: group.id,
+                                    playerId: member.playerId,
+                                    playerName: member.playerName,
+                                  });
+                                } else {
+                                  toggleAdvance(group.id, member.playerId);
+                                }
+                              }}>
+                              {group.stage === "Champion" ? (
+                                <span className={`text-center text-xs font-bold ${
+                                  idx === 0 ? "text-yellow-500" :
+                                  idx === 1 ? "text-gray-400" :
+                                  idx === 2 ? "text-orange-500" :
+                                  "text-muted-foreground"
+                                }`}>#{idx + 1}</span>
+                              ) : (
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  <Checkbox
+                                    checked={groupAdvance.includes(member.playerId) || member.isAdvanced}
+                                    onCheckedChange={() => {
+                                      if (member.isAdvanced) {
+                                        setPlayerToUnAdvance({
+                                          groupId: group.id,
+                                          playerId: member.playerId,
+                                          playerName: member.playerName,
+                                        });
+                                      } else {
+                                        toggleAdvance(group.id, member.playerId);
+                                      }
+                                    }}
+                                    className="h-4 w-4 bg-background border-muted-foreground/40"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex items-center gap-3 min-w-0 pr-1">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="text-[11px] font-medium">{member.playerName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col min-w-0">
+                                  <span className={`font-semibold text-sm truncate ${member.isAdvanced ? "text-emerald-600" : ""}`} title={member.playerName}>
+                                    {member.playerName}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground truncate" title={`@${member.playerName.toLowerCase().replace(/\\s+/g, '')}`}>
+                                    @{member.playerName.toLowerCase().replace(/\s+/g, '')}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-center gap-1">
+                                <span className="font-mono font-medium">{member.score}</span>
+                              </div>
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground">
+                                <span className="font-mono">{formatTime(member.timeSeconds)}</span>
+                              </div>
+                              <div className="flex justify-center">
+                                {member.isAdvanced && (
+                                  <span title={t("competition.advanced") || "Advanced"}>
+                                    <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                      {groupAdvance.length > 0 && (
+                        <div className="px-4 py-3 border-t bg-muted/20">
+                          <Button size="sm" className="gap-1.5 h-8 text-xs w-full font-medium" onClick={() => handleAdvance(group.id)}>
+                            <ArrowUpRight className="h-4 w-4" />
+                            {t("competition.advance_selected")} ({groupAdvance.length})
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Assign Players Dialog */}
       <Dialog open={!!assignDialog} onOpenChange={(open) => { if (!open) { setAssignDialog(null); setAssignSelected([]); setAssignSearch(""); } }}>
@@ -529,8 +576,13 @@ export function PhaseGroupStage({
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left text-sm transition-colors cursor-pointer ${isSel ? "bg-primary/10 border border-primary/30" : "hover:bg-muted/50"}`}>
                         <input type="checkbox" checked={isSel} readOnly className="h-4 w-4 accent-primary" />
                         <Avatar className="h-7 w-7"><AvatarFallback className="text-[10px]">{player.name.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-                        <span className="flex-1 truncate font-medium">{player.name}</span>
-                        <span className="text-xs text-muted-foreground">{player.avgScore.toFixed(1)} pts</span>
+                        <div className="flex-1 flex flex-col min-w-0 pr-2">
+                          <span className="font-medium text-sm truncate" title={player.name}>{player.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate" title={`@${player.name.toLowerCase().replace(/\s+/g, '')}`}>
+                            @{player.name.toLowerCase().replace(/\s+/g, '')}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{player.avgScore.toFixed(1)} pts</span>
                       </div>
                     );
                   })}

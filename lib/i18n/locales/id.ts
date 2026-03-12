@@ -857,7 +857,7 @@ export const id: Record<string, string> = {
   "competition.phase_group_stage": "Fase Grup",
   "competition.phase_semifinal": "Semifinal",
   "competition.phase_final": "Final",
-  "competition.phase_completed": "Selesai",
+  "competition.phase_completed": "Juara",
   "competition.add_round": "Tambah Babak",
   "competition.round_name_placeholder": "cth. Kualifikasi, Semifinal, Final...",
   "competition.round_name_required": "Silakan masukkan nama babak",
