@@ -172,7 +172,12 @@ export function PhaseQualification({
                             {player.name.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="font-medium text-sm">{player.name}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-sm truncate" title={player.name}>{player.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate" title={`@${player.name.toLowerCase().replace(/\s+/g, '')}`}>
+                            @{player.name.toLowerCase().replace(/\s+/g, '')}
+                          </span>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-center">

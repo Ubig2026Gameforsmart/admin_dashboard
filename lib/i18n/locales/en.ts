@@ -859,7 +859,7 @@ export const en: Record<string, string> = {
   "competition.phase_group_stage": "Group Stage",
   "competition.phase_semifinal": "Semifinal",
   "competition.phase_final": "Final",
-  "competition.phase_completed": "Completed",
+  "competition.phase_completed": "Champion",
   "competition.add_round": "Add Round",
   "competition.round_name_placeholder": "e.g. Qualification, Semifinal, Final...",
   "competition.round_name_required": "Please enter a round name",
