@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { DummyPlayer, MockQuiz } from "@/types/competition";
 import {
   Plus, Trash2, Users, UserPlus, BookOpen, Trophy, Clock,
-  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2,
+  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,6 +93,12 @@ export function PhaseGroupStage({
   const [advanceSelected, setAdvanceSelected] = useState<Record<string, string[]>>({});
   const [playerToUnAdvance, setPlayerToUnAdvance] = useState<{groupId: string, playerId: string, playerName: string} | null>(null);
 
+  // Edit Group state
+  const [editGroup, setEditGroup] = useState<LocalGroup | null>(null);
+  const [editGroupName, setEditGroupName] = useState("");
+  const [editGroupStage, setEditGroupStage] = useState("");
+  const [editGroupSources, setEditGroupSources] = useState<string[]>([]);
+
   // All assigned player IDs across all groups
   const allAssignedIds = groups.flatMap((g) => g.members.map((m) => m.playerId));
 
@@ -129,6 +135,29 @@ export function PhaseGroupStage({
   const handleDeleteGroup = (groupId: string) => {
     onGroupsChange(groups.filter((g) => g.id !== groupId));
     toast.success(t("competition.group_deleted"));
+  };
+
+  const handleUpdateGroup = () => {
+    if (!editGroup) return;
+    if (!editGroupName.trim()) {
+      toast.error(t("competition.group_name_required") || "Group name is required");
+      return;
+    }
+
+    onGroupsChange(
+      groups.map((g) =>
+        g.id === editGroup.id
+          ? {
+              ...g,
+              name: editGroupName.trim(),
+              stage: editGroupStage,
+              sources: editGroupSources,
+            }
+          : g
+      )
+    );
+    toast.success(t("competition.group_updated") || "Group updated successfully");
+    setEditGroup(null);
   };
 
   const handleAssignPlayers = () => {
@@ -339,6 +368,16 @@ export function PhaseGroupStage({
                       onClick={(e) => { e.stopPropagation(); setAssignDialog(group); }}>
                       <UserPlus className="h-3 w-3" /> {t("competition.assign_finalist")}
                     </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditGroup(group);
+                        setEditGroupName(group.name);
+                        setEditGroupStage(group.stage || "Semifinal");
+                        setEditGroupSources(group.sources || []);
+                      }}>
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
                       onClick={(e) => { e.stopPropagation(); handleDeleteGroup(group.id); }}>
                       <Trash2 className="h-3.5 w-3.5" />
@@ -361,7 +400,7 @@ export function PhaseGroupStage({
                 <DialogHeader className="flex flex-row items-center justify-between pr-6 gap-4">
                   <DialogTitle className="flex items-center gap-2 min-w-0">
                     <Trophy className="h-5 w-5 text-yellow-500 shrink-0" />
-                    <span className="truncate" title={`${group.name} ${t("competition.members")}`}>{group.name} {t("competition.members")}</span>
+                    <span className="truncate" title={group.name}>{group.name}</span>
                     {group.stage && (
                       <Badge variant="outline" className="text-[10px] h-5 shrink-0 font-normal">
                         {group.stage}
@@ -380,19 +419,48 @@ export function PhaseGroupStage({
                 <div className="mt-3 flex flex-col gap-3">
                   {group.members.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-6">{t("competition.no_members")}</p>
-                  ) : (
+                  ) : (() => {
+                    const visibleMembers = [...group.members]
+                      .filter(m => m.playerName.toLowerCase().includes(detailSearch.toLowerCase()))
+                      .sort((a, b) => b.score - a.score);
+                    
+                    const availableToAdvance = visibleMembers.filter(m => !m.isAdvanced);
+                    const allSelected = availableToAdvance.length > 0 && availableToAdvance.every(m => groupAdvance.includes(m.playerId));
+
+                    return (
                     <div className="border rounded-md overflow-hidden">
-                      <div className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px]"} gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b bg-muted/30`}>
-                        {group.stage === "Champion" ? <span className="text-center">#</span> : <span />}
+                      <div className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px]"} gap-2 px-4 py-2 items-center text-[11px] font-medium text-muted-foreground border-b bg-muted/30`}>
+                        {group.stage === "Champion" ? <span className="text-center">#</span> : (
+                          <div className="flex items-center">
+                            <Checkbox 
+                              checked={availableToAdvance.length > 0 && allSelected}
+                              onCheckedChange={() => {
+                                if (allSelected) {
+                                  const idsToRemove = availableToAdvance.map(m => m.playerId);
+                                  setAdvanceSelected(prev => ({
+                                    ...prev,
+                                    [group.id]: (prev[group.id] || []).filter(id => !idsToRemove.includes(id))
+                                  }));
+                                } else {
+                                  const idsToAdd = availableToAdvance.map(m => m.playerId);
+                                  setAdvanceSelected(prev => {
+                                    const current = prev[group.id] || [];
+                                    const newIds = Array.from(new Set([...current, ...idsToAdd]));
+                                    return { ...prev, [group.id]: newIds };
+                                  });
+                                }
+                              }}
+                              className="h-4 w-4 bg-background border-muted-foreground/40 mt-0.5"
+                            />
+                          </div>
+                        )}
                         <span>{t("comp_detail.table_player") || "Player"}</span>
                         <span className="text-center">{t("comp_detail.table_avg") || "Score"}</span>
                         <span className="text-center">{t("competition.time") || "Time"}</span>
                         <span />
                       </div>
                       <div className="max-h-[50vh] overflow-y-auto w-full">
-                        {[...group.members]
-                          .filter(m => m.playerName.toLowerCase().includes(detailSearch.toLowerCase()))
-                          .sort((a, b) => b.score - a.score)
+                        {visibleMembers
                           .map((member, idx) => (
                             <div key={member.playerId}
                               className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px]"} gap-2 items-center px-4 py-2.5 text-sm border-b last:border-b-0 transition-colors ${
@@ -474,7 +542,8 @@ export function PhaseGroupStage({
                         </div>
                       )}
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </>
             );
@@ -740,6 +809,85 @@ export function PhaseGroupStage({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Group Dialog */}
+      <Dialog open={!!editGroup} onOpenChange={(open) => { if (!open) setEditGroup(null); }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{t("competition.edit_group") || "Edit Group"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">{t("competition.group_name") || "Group Name"}</label>
+              <Input
+                placeholder={t("competition.group_name_placeholder") || "e.g. Group A"}
+                value={editGroupName}
+                onChange={(e) => setEditGroupName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleUpdateGroup()}
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">{t("competition.stage") || "Stage"}</label>
+              <Select value={editGroupStage} onValueChange={(val) => { setEditGroupStage(val); if (val === "Semifinal") setEditGroupSources([]); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Semifinal">Semifinal</SelectItem>
+                  <SelectItem value="Final">Final</SelectItem>
+                  <SelectItem value="Champion">Champion</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editGroupStage !== "Semifinal" && (
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">{t("competition.source_groups") || "Source Groups"}</label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                      {editGroupSources.length > 0
+                        ? `${editGroupSources.length} ${t("competition.selected")}`
+                        : t("competition.select_source")}
+                      <ChevronDownIcon className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[375px]" align="start">
+                    <DropdownMenuLabel>{t("competition.source_groups")}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {groups
+                      .filter((g) => g.id !== editGroup?.id)
+                      .map((g) => {
+                        const isSelected = editGroupSources.includes(g.id);
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={g.id}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              setEditGroupSources((prev) =>
+                                checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
+                              );
+                            }}
+                          >
+                            <span className="truncate">{g.name} <span className="text-muted-foreground">({g.stage || "Semifinal"})</span></span>
+                          </DropdownMenuCheckboxItem>
+                        );
+                      })}
+                    {groups.filter((g) => g.id !== editGroup?.id).length === 0 && (
+                      <div className="px-2 py-4 text-xs text-muted-foreground text-center">
+                        {t("competition.no_groups_yet")}
+                      </div>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditGroup(null)}>{t("action.cancel") || "Cancel"}</Button>
+            <Button onClick={handleUpdateGroup}>{t("action.save") || "Save changes"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Bracket Visualization */}
       {groups.length > 0 && (

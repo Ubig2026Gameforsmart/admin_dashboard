@@ -129,7 +129,7 @@ export function LocalBracketView({ groups }: LocalBracketViewProps) {
     <div className="space-y-4">
       <h3 className="text-sm font-semibold flex items-center gap-2">
          <Trophy className="h-4 w-4 text-yellow-500" />
-         Bracket
+         {t("competition.phase_group_stage") || "Group Stage"}
       </h3>
 
       <div 

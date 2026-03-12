@@ -849,6 +849,15 @@ export const en: Record<string, string> = {
   "receptionist.all_attended": "All participants have attended!",
   "receptionist.no_attendance": "No one has attended yet",
 
+  // Edit Group
+  "competition.edit_group": "Edit Group",
+  "competition.group_name": "Group Name",
+  "competition.stage": "Stage",
+  "competition.source_groups": "Source Groups",
+  "competition.select_source": "Select source...",
+  "competition.no_groups_yet": "No other groups available",
+  "competition.group_updated": "Group updated successfully",
+
   // Competition Bracket System
   "comp_detail.tab_participants": "Participants",
   "competition.rounds_title": "Competition Rounds",

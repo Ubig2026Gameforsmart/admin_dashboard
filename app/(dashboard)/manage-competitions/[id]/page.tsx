@@ -310,7 +310,7 @@ export default function CompetitionDetailPage() {
                 {rulesExpanded ? (
                   <ul className="space-y-1">
                     {(detail.rules || []).map((rule: string, i: number) => (
-                      <li key={i}>{i + 1}. {rule}</li>
+                      <li key={i}>{rule}</li>
                     ))}
                   </ul>
                 ) : (

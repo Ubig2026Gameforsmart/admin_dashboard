@@ -34,9 +34,10 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const isLoginPage = request.nextUrl.pathname === "/login"
+  const isWebhook = request.nextUrl.pathname.startsWith("/api/githubWebhook")
 
-  // If not logged in and not on login page, redirect to login
-  if (!user && !isLoginPage) {
+  // If not logged in and not on login page (and not webhook), redirect to login
+  if (!user && !isLoginPage && !isWebhook) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
@@ -54,6 +55,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/githubWebhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }

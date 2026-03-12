@@ -847,6 +847,15 @@ export const id: Record<string, string> = {
   "receptionist.no_participants": "Tidak ada peserta ditemukan",
   "receptionist.no_attendance": "Belum ada yang hadir",
 
+  // Edit Group
+  "competition.edit_group": "Edit Grup",
+  "competition.group_name": "Nama Grup",
+  "competition.stage": "Babak (Stage)",
+  "competition.source_groups": "Grup Sumber",
+  "competition.select_source": "Pilih grup sumber...",
+  "competition.no_groups_yet": "Tidak ada grup lain tersedia",
+  "competition.group_updated": "Berhasil memperbarui grup",
+
   // Sistem Bracket Kompetisi
   "comp_detail.tab_participants": "Peserta",
   "competition.rounds_title": "Babak Kompetisi",
