@@ -1,6 +1,7 @@
 "use server"
 
 import { getSupabaseAdminClient } from "@/lib/supabase-admin"
+import { getUser } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 
 export interface QuizApproval {
@@ -93,15 +94,15 @@ export async function fetchQuizApprovals({
 
   if (quizzes && quizzes.length > 0) {
     const creatorIds = [...new Set(quizzes.map((q) => q.creator_id).filter(Boolean))]
-    
+
     let profilesMap: Record<string, any> = {}
-    
+
     if (creatorIds.length > 0) {
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, fullname, username, email, avatar_url")
         .in("id", creatorIds)
-      
+
       if (profiles) {
         profiles.forEach(p => {
           profilesMap[p.id] = p
@@ -141,7 +142,7 @@ export async function fetchQuizApprovals({
 
 export async function fetchQuizApprovalById(id: string): Promise<{ data: QuizApproval | null; error: string | null }> {
   const supabase = getSupabaseAdminClient()
-  
+
   const { data: quiz, error } = await supabase
     .from("quizzes")
     .select("*")
@@ -163,15 +164,15 @@ export async function fetchQuizApprovalById(id: string): Promise<{ data: QuizApp
   }
 
   const result: QuizApproval = {
-      id: quiz.id,
-      title: quiz.title,
-      description: quiz.description,
-      category: quiz.category,
-      language: quiz.language,
-      cover_image: quiz.cover_image || quiz.image_url,
-      questions: quiz.questions,
-      created_at: quiz.created_at,
-      creator
+    id: quiz.id,
+    title: quiz.title,
+    description: quiz.description,
+    category: quiz.category,
+    language: quiz.language,
+    cover_image: quiz.cover_image || quiz.image_url,
+    questions: quiz.questions,
+    created_at: quiz.created_at,
+    creator
   }
 
   return { data: result, error: null }
@@ -180,37 +181,150 @@ export async function fetchQuizApprovalById(id: string): Promise<{ data: QuizApp
 export async function approveQuizAction(id: string) {
   const supabase = getSupabaseAdminClient()
 
-  // Approve: request = false, is_public = true (Assuming approval makes it public)
-  const { error } = await supabase
-    .from("quizzes")
-    .update({ request: false, is_public: true }) 
-    .eq("id", id)
-
-  if (error) {
-    console.error("Error approving quiz:", error)
-    return { error: error.message }
+  // Try to get admin user profile ID (profiles.id uses XID, not Auth UUID)
+  let actorId: string | null = null
+  try {
+    const user = await getUser()
+    if (user?.id) {
+      // Lookup profile XID from auth_user_id (UUID)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .single()
+      if (profile?.id) actorId = profile.id
+    }
+  } catch (e) {
+    console.warn("Could not get user profile in approveQuizAction")
   }
 
-  revalidatePath("/support/quiz-approval")
-  return { error: null }
+  try {
+    // 1. Fetch quiz to get creator_id and title
+    const { data: quiz, error: fetchError } = await supabase
+      .from("quizzes")
+      .select("title, creator_id")
+      .eq("id", id)
+      .single()
+
+    if (fetchError || !quiz) {
+      console.error("Error fetching quiz for approval:", fetchError)
+      return { error: fetchError?.message || "Quiz not found" }
+    }
+
+    // 2. Approve: request = false, is_public = true
+    const { error } = await supabase
+      .from("quizzes")
+      .update({ request: false, is_public: true })
+      .eq("id", id)
+
+    if (error) {
+      console.error("Error approving quiz:", error)
+      return { error: error.message }
+    }
+
+    // 3. Send Notification to creator
+    if (quiz.creator_id) {
+      console.log("Inserting approve notification for creator:", quiz.creator_id, "actor:", actorId)
+      const { error: notifyError } = await supabase.from("notifications").insert({
+        user_id: quiz.creator_id,
+        actor_id: actorId,
+        type: "admin",
+        entity_type: "support",
+        entity_id: null,
+        content: {
+          title: "Approval Quiz",
+          message: `Your quiz "${quiz.title}" has been published.`,
+        },
+        is_read: false
+      })
+
+      if (notifyError) {
+        console.error("Error inserting approve notification:", notifyError)
+      } else {
+        console.log("Approve notification inserted successfully")
+      }
+    }
+
+    revalidatePath("/quiz-approval")
+    return { error: null }
+  } catch (err: any) {
+    console.error("Exception in approveQuizAction:", err)
+    return { error: err.message || "Unknown error occurred" }
+  }
 }
 
 export async function rejectQuizAction(id: string, reason?: string) {
   const supabase = getSupabaseAdminClient()
 
-  // Reject: request = false (removed from pending list)
-  // Optionally store rejection reason in db if column exists.
-  // For now, just clear request flag.
-  const { error } = await supabase
-    .from("quizzes")
-    .update({ request: false }) 
-    .eq("id", id)
-
-  if (error) {
-    console.error("Error rejecting quiz:", error)
-    return { error: error.message }
+  // Try to get admin user profile ID (profiles.id uses XID, not Auth UUID)
+  let actorId: string | null = null
+  try {
+    const user = await getUser()
+    if (user?.id) {
+      // Lookup profile XID from auth_user_id (UUID)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .single()
+      if (profile?.id) actorId = profile.id
+    }
+  } catch (e) {
+    console.warn("Could not get user profile in rejectQuizAction")
   }
 
-  revalidatePath("/support/quiz-approval")
-  return { error: null }
+  try {
+    // 1. Fetch quiz to get creator_id and title
+    const { data: quiz, error: fetchError } = await supabase
+      .from("quizzes")
+      .select("title, creator_id")
+      .eq("id", id)
+      .single()
+
+    if (fetchError || !quiz) {
+      console.error("Error fetching quiz for rejection:", fetchError)
+      return { error: fetchError?.message || "Quiz not found" }
+    }
+
+    // 2. Reject: request = false (removed from pending list)
+    const { error } = await supabase
+      .from("quizzes")
+      .update({ request: false })
+      .eq("id", id)
+
+    if (error) {
+      console.error("Error rejecting quiz:", error)
+      return { error: error.message }
+    }
+
+    // 3. Send Notification to creator
+    if (quiz.creator_id) {
+      const defaultReason = "Tidak ada alasan spesifik yang diberikan.";
+      console.log("Inserting reject notification for creator:", quiz.creator_id, "actor:", actorId)
+      const { error: notifyError } = await supabase.from("notifications").insert({
+        user_id: quiz.creator_id,
+        actor_id: actorId,
+        type: "admin",
+        entity_type: "support",
+        entity_id: null,
+        content: {
+          title: "Approval Quiz",
+          message: `Your quiz "${quiz.title}" has been rejected. Reason: ${reason || defaultReason}`,
+        },
+        is_read: false
+      })
+
+      if (notifyError) {
+        console.error("Error inserting reject notification:", notifyError)
+      } else {
+        console.log("Reject notification inserted successfully")
+      }
+    }
+
+    revalidatePath("/quiz-approval")
+    return { error: null }
+  } catch (err: any) {
+    console.error("Exception in rejectQuizAction:", err)
+    return { error: err.message || "Unknown error occurred" }
+  }
 }

@@ -846,6 +846,14 @@ export const id: Record<string, string> = {
   "receptionist.search_attendance": "Cari kehadiran...",
   "receptionist.no_participants": "Tidak ada peserta ditemukan",
   "receptionist.no_attendance": "Belum ada yang hadir",
+  "receptionist.scan_qr": "Scan QR",
+  "receptionist.scan_qr_desc": "Arahkan kamera ke kode QR peserta untuk mencatat kehadiran.",
+  "receptionist.scan_success": "Kehadiran Tercatat!",
+  "receptionist.scan_not_found": "Tidak Ditemukan",
+  "receptionist.scan_not_found_desc": "Kode QR tidak cocok dengan finalis manapun.",
+  "receptionist.already_attended": "Sudah Hadir",
+  "receptionist.last_scan": "Scan terakhir",
+  "receptionist.point_camera": "Arahkan kamera ke kode QR",
 
   // Edit Group
   "competition.edit_group": "Edit Grup",

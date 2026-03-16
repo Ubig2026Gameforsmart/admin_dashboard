@@ -848,6 +848,14 @@ export const en: Record<string, string> = {
   "receptionist.not_attended": "Not Attended",
   "receptionist.all_attended": "All participants have attended!",
   "receptionist.no_attendance": "No one has attended yet",
+  "receptionist.scan_qr": "Scan QR",
+  "receptionist.scan_qr_desc": "Point the camera at a participant's QR code to record attendance.",
+  "receptionist.scan_success": "Attendance Recorded!",
+  "receptionist.scan_not_found": "Not Found",
+  "receptionist.scan_not_found_desc": "QR code does not match any finalist.",
+  "receptionist.already_attended": "Already Attended",
+  "receptionist.last_scan": "Last scan",
+  "receptionist.point_camera": "Point camera at QR code",
 
   // Edit Group
   "competition.edit_group": "Edit Group",

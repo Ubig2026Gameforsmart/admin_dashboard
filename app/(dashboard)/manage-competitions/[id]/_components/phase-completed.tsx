@@ -34,7 +34,8 @@ export function PhaseCompleted({ groups }: PhaseCompletedProps) {
     return `${m}m ${s.toString().padStart(2, "0")}s`;
   }
 
-  const hasMembers = groups.some(g => g.members.length > 0);
+  const championGroups = groups.filter(g => g.stage === "Champion");
+  const hasMembers = championGroups.some(g => g.members.length > 0);
 
   if (!hasMembers) {
     return (
@@ -55,7 +56,7 @@ export function PhaseCompleted({ groups }: PhaseCompletedProps) {
       </div>
 
       <div className="space-y-10">
-        {groups.map((group) => {
+        {championGroups.map((group) => {
           if (group.members.length === 0) return null;
 
           // Rank members by score (desc), then time (asc)

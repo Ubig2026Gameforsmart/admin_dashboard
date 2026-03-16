@@ -101,7 +101,7 @@ export function QuizApprovalTable({
     if (error) {
       toast({
         title: t("msg.error"),
-        description: t("approval.failed_approve"),
+        description: `${t("approval.failed_approve")} - ${error}`,
         variant: "destructive",
       });
     } else {
@@ -137,7 +137,7 @@ export function QuizApprovalTable({
     if (error) {
       toast({
         title: t("msg.error"),
-        description: t("approval.failed_reject"),
+        description: `${t("approval.failed_reject")} - ${error}`,
         variant: "destructive",
       });
     } else {
