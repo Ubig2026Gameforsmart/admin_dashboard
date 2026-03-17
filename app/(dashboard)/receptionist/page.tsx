@@ -5,12 +5,8 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { useTranslation } from "@/lib/i18n";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import {
-  Search,
-  Image as ImageIcon,
-} from "lucide-react";
-
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/shared/search-input";
+import { Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/dashboard/data-table";
 import {
@@ -38,7 +34,6 @@ export default function ReceptionistPage() {
 
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [previewPoster, setPreviewPoster] = useState<{ url: string; title: string } | null>(null);
 
@@ -71,14 +66,6 @@ export default function ReceptionistPage() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-
-  const handleSearch = () => {
-    setSearchQuery(searchInput);
-    setCurrentPage(1);
-  };
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSearch();
-  };
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -194,21 +181,15 @@ export default function ReceptionistPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">{t("nav.receptionist") || "Receptionist"}</h1>
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Input
-              placeholder={t("manage_competitions.search_placeholder") || "Search by title..."}
-              className="pr-10 w-64 bg-background border-border"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <button
-              onClick={handleSearch}
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-            >
-              <Search className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <SearchInput
+            placeholder={t("manage_competitions.search_placeholder") || "Search by title..."}
+            value={searchQuery}
+            onSearch={(val) => {
+              setSearchQuery(val);
+              setCurrentPage(1);
+            }}
+            className="w-64 bg-background border-border"
+          />
         </div>
       </div>
 

@@ -8,7 +8,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { format } from "date-fns";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -42,6 +42,10 @@ import {
 } from "@/components/ui/select";
 import { useTranslation } from "@/lib/i18n";
 
+import { Checkbox } from "@/components/ui/checkbox";
+import { SearchInput } from "@/components/shared/search-input";
+import { getTemplates } from "../rejection-templates/actions";
+
 interface QuizApprovalTableProps {
   initialData: QuizApproval[];
   totalPages: number;
@@ -64,9 +68,18 @@ export function QuizApprovalTable({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const [searchInput, setSearchInput] = useState(searchQuery);
   const { toast } = useToast();
   const { t } = useTranslation();
+
+  const [rejectionTemplates, setRejectionTemplates] = useState<any[]>([]);
+  const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
+  const [rejectionNote, setRejectionNote] = useState("");
+
+  useEffect(() => {
+    getTemplates().then((data) => {
+      setRejectionTemplates(data?.filter(t => t.is_active && t.type === 'quiz') || []);
+    });
+  }, []);
 
   const [rejectDialog, setRejectDialog] = useState<{
     open: boolean;
@@ -77,7 +90,6 @@ export function QuizApprovalTable({
     id: "",
     title: "",
   });
-  const [rejectionReason, setRejectionReason] = useState("");
 
   const [approveDialog, setApproveDialog] = useState<{
     open: boolean;
@@ -117,23 +129,33 @@ export function QuizApprovalTable({
 
   const handleReject = (id: string, title: string) => {
     setRejectDialog({ open: true, id, title });
-    setRejectionReason("");
+    setSelectedReasons([]);
+    setRejectionNote("");
   };
 
   const executeReject = async () => {
     const { id, title } = rejectDialog;
     if (!id) return;
 
-    if (!rejectionReason.trim()) {
+    if (selectedReasons.length === 0 && !rejectionNote.trim()) {
       toast({
         title: t("msg.error"),
-        description: t("approval.reject_desc"),
+        description: t("approval.reject_desc") || "Please provide at least one reason.",
         variant: "destructive",
       });
       return;
     }
 
-    const { error } = await rejectQuizAction(id, rejectionReason);
+    // Build the final reason string
+    let finalReason = "";
+    if (selectedReasons.length > 0) {
+      finalReason += selectedReasons.map(r => `• ${r}`).join("\n");
+    }
+    if (rejectionNote.trim()) {
+      finalReason += finalReason ? `\n\nCatatan Tambahan:\n${rejectionNote}` : rejectionNote;
+    }
+
+    const { error } = await rejectQuizAction(id, finalReason);
     if (error) {
       toast({
         title: t("msg.error"),
@@ -165,16 +187,6 @@ export function QuizApprovalTable({
     startTransition(() => {
       router.push(`?${newParams.toString()}`);
     });
-  };
-
-  const handleSearch = () => {
-    updateUrl({ search: searchInput, page: 1 });
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
   };
 
   const handlePageChange = (page: number) => {
@@ -310,22 +322,12 @@ export function QuizApprovalTable({
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Input
-              placeholder={t("approval.search")}
-              className="pr-10 w-64 bg-background border-border"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <button
-              onClick={handleSearch}
-              disabled={isPending}
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors cursor-pointer"
-            >
-              <Search className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <SearchInput
+            placeholder={t("approval.search")}
+            value={searchQuery}
+            onSearch={(val) => updateUrl({ search: val, page: 1 })}
+            className="w-64 bg-background border-border"
+          />
 
           <Select
             value={categoryFilter}
@@ -414,18 +416,60 @@ export function QuizApprovalTable({
         open={rejectDialog.open}
         onOpenChange={(open) => setRejectDialog((prev) => ({ ...prev, open }))}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{t("approval.reject_title")}</DialogTitle>
+            <DialogTitle>{t("rejection.title") || "Reject Quiz?"}</DialogTitle>
+            <DialogDescription>
+              {t("rejection.subtitle") || "Select 1-3 reasons for rejection to inform the creator."}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2 py-2">
-            <Label htmlFor="reason">{t("approval.reason")}</Label>
+          <div className="grid gap-4 py-2">
+            <div className="flex justify-between items-center text-sm font-medium">
+              <Label>{t("rejection.title") || "Reason"}</Label>
+              <span className="text-muted-foreground">{selectedReasons.length}/3</span>
+            </div>
+            <div className="flex flex-col gap-1 max-h-[280px] overflow-y-auto pr-1">
+              {rejectionTemplates.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">No templates available. Add them in Rejection Templates.</p>
+              ) : (
+                rejectionTemplates.map((template) => {
+                  const labelStr = t("rejection_templates.reason_en") === "Reason (English)" 
+                    ? template.reason_en 
+                    : template.reason_id;
+                  
+                  return (
+                    <div key={template.id} className="flex items-start gap-3 rounded-lg border border-border/50 px-3 py-3 hover:bg-secondary/40 transition-colors">
+                      <Checkbox 
+                        id={`reason-${template.id}`} 
+                        checked={selectedReasons.includes(labelStr)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            if (selectedReasons.length < 3) {
+                              setSelectedReasons([...selectedReasons, labelStr]);
+                            }
+                          } else {
+                            setSelectedReasons(selectedReasons.filter(r => r !== labelStr));
+                          }
+                        }}
+                        disabled={!selectedReasons.includes(labelStr) && selectedReasons.length >= 3}
+                        className="mt-0.5"
+                      />
+                      <label 
+                        htmlFor={`reason-${template.id}`} 
+                        className="text-sm leading-relaxed peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {labelStr}
+                      </label>
+                    </div>
+                  );
+                })
+              )}
+            </div>
             <Textarea
-              id="reason"
-              placeholder={t("approval.reject_reason_placeholder")}
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              className="h-24 resize-none"
+              placeholder={t("rejection.additional_note") || "Additional note (optional)..."}
+              value={rejectionNote}
+              onChange={(e) => setRejectionNote(e.target.value)}
+              className="h-20 resize-none mt-2"
             />
           </div>
           <DialogFooter>
@@ -435,14 +479,14 @@ export function QuizApprovalTable({
                 setRejectDialog((prev) => ({ ...prev, open: false }))
               }
             >
-              {t("action.cancel")}
+              {t("rejection.cancel") || "Cancel"}
             </Button>
             <Button
               variant="destructive"
               onClick={executeReject}
-              disabled={!rejectionReason.trim()}
+              disabled={selectedReasons.length === 0 && !rejectionNote.trim()}
             >
-              {t("action.reject")}
+              {t("rejection.reject") || "Reject"}
             </Button>
           </DialogFooter>
         </DialogContent>

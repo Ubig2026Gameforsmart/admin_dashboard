@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { DataTable } from "@/components/dashboard/data-table";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/shared/search-input";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import {
@@ -43,7 +43,6 @@ export function CityTable({
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation();
 
-  const [searchInput, setSearchInput] = useState(searchQuery);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [loadingCity, setLoadingCity] = useState(false);
 
@@ -73,15 +72,7 @@ export function CityTable({
     });
   };
 
-  const handleSearch = () => {
-    updateUrl({ search: searchInput, page: 1 });
-  };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
 
   const handleCountryChange = (value: string) => {
     updateUrl({ country: value, state: "all", page: 1 });
@@ -176,22 +167,12 @@ export function CityTable({
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Input
-              placeholder={t("groups.search_city")}
-              className="pr-10 w-64 bg-background border-border"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <button
-              onClick={handleSearch}
-              disabled={isPending}
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              <Search className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <SearchInput
+            placeholder={t("groups.search_city")}
+            value={searchQuery}
+            onSearch={(val) => updateUrl({ search: val, page: 1 })}
+            className="w-64 bg-background border-border"
+          />
 
           <Combobox
             options={countryOptions}

@@ -112,6 +112,11 @@ const navigation: NavItem[] = [
         href: "/quiz-approval",
         icon: FileCheck,
       },
+      {
+        title: "nav.rejection_templates",
+        href: "/rejection-templates",
+        icon: FileText,
+      },
     ],
   },
   {

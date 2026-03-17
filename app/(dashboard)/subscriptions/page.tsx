@@ -10,8 +10,8 @@ import {
   Filter,
 } from "lucide-react";
 
+import { SearchInput } from "@/components/shared/search-input";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -278,17 +278,12 @@ export default function SubscriptionsPage() {
           {t("subscriptions.title")}
         </h1>
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Input
-              placeholder={t("subscriptions.search")}
-              className="pr-10 w-64 bg-background border-border"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <button className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer">
-              <Search className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <SearchInput
+            placeholder={t("subscriptions.search")}
+            className="w-64 bg-background border-border"
+            value={searchTerm}
+            onSearch={(val) => setSearchTerm(val)}
+          />
           <Button
             variant="outline"
             size="icon"

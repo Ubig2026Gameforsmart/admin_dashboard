@@ -37,6 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/shared/search-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -71,7 +72,6 @@ export function ReportTable({ initialData }: ReportTableProps) {
 
   // Client-Side State
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchInput, setSearchInput] = useState("");
   const [activeSearchQuery, setActiveSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -163,13 +163,6 @@ export function ReportTable({ initialData }: ReportTableProps) {
     reportTitle: string;
   }>({ open: false, id: "", notes: "", reportTitle: "" });
 
-  const handleSearch = () => {
-    setActiveSearchQuery(searchInput);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") handleSearch();
-  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -501,22 +494,14 @@ export function ReportTable({ initialData }: ReportTableProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Input
-              placeholder={t("reports.search")}
-              className="pr-10 w-64 bg-background border-border"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <button
-              onClick={handleSearch}
-              disabled={isPending}
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              <Search className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <SearchInput
+            placeholder={t("reports.search")}
+            onSearch={(val) => {
+              setActiveSearchQuery(val);
+              setCurrentPage(1);
+            }}
+            className="w-64 bg-background border-border"
+          />
 
           <Select
             value={statusFilter}

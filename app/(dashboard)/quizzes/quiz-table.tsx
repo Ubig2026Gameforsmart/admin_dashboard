@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/shared/search-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -71,9 +72,6 @@ export function QuizTable({ initialData }: QuizTableProps) {
   // Client-Side State
   const [data, setData] = useState(initialData);
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchInput, setSearchInput] = useState(
-    searchParams.get("search") || ""
-  );
   const [activeSearchQuery, setActiveSearchQuery] = useState(
     searchParams.get("search") || ""
   );
@@ -223,16 +221,6 @@ export function QuizTable({ initialData }: QuizTableProps) {
     quizTitle: "",
     note: "",
   });
-
-  const handleSearch = () => {
-    setActiveSearchQuery(searchInput);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -528,22 +516,15 @@ export function QuizTable({ initialData }: QuizTableProps) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <div className="relative">
-            <Input
-              placeholder={t("quiz.search")}
-              className="pr-10 w-64 bg-background border-border"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <button
-              onClick={handleSearch}
-              disabled={isPending}
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              <Search className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <SearchInput
+            placeholder={t("quiz.search")}
+            value={searchParams.get("search") || ""}
+            onSearch={(val) => {
+              setActiveSearchQuery(val);
+              setCurrentPage(1);
+            }}
+            className="w-64 bg-background border-border"
+          />
 
           <Button
             variant="outline"
