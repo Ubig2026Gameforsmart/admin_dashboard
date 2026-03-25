@@ -970,4 +970,9 @@ export const en: Record<string, string> = {
   "rejection_templates.deleted": "Template deleted successfully.",
   "rejection_templates.enter_reason_en": "Enter reason in English...",
   "rejection_templates.enter_reason_id": "Enter reason in Indonesian...",
+
+  // Assign Game
+  "competition.assign_game": "Assign Game",
+  "competition.search_game": "Search game...",
+  "competition.no_games_found": "No games found.",
 };

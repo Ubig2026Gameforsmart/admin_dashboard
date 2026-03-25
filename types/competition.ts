@@ -1,6 +1,6 @@
 // ===== Competition Types =====
 
-export type CompetitionStatus = "draft" | "published" | "completed" | "coming_soon";
+export type CompetitionStatus = "draft" | "published" | "completed" | "coming_soon" | "finished";
 
 export interface Competition {
   id: string;

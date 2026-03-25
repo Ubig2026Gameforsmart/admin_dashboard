@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { DummyPlayer, MockQuiz } from "@/types/competition";
 import {
   Plus, Trash2, Users, UserPlus, BookOpen, Trophy, Clock,
-  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit,
+  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit, Gamepad2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,10 +42,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, ChevronDown } from "lucide-react";
 import { LocalBracketView } from "./local-bracket-view";
 
+export interface GameApp {
+  name: string;
+  count: number;
+}
+
 interface PhaseGroupStageProps {
   finalists: DummyPlayer[];
   groups: LocalGroup[];
   quizzes: MockQuiz[];
+  games: GameApp[];
   onGroupsChange: (groups: LocalGroup[]) => void;
 }
 
@@ -53,6 +59,7 @@ export interface LocalGroup {
   id: string;
   name: string;
   quizIds: string[];
+  gameIds: string[];
   members: LocalGroupMember[];
   stage?: string;
   sources?: string[];
@@ -77,6 +84,7 @@ export function PhaseGroupStage({
   finalists,
   groups,
   quizzes,
+  games,
   onGroupsChange,
 }: PhaseGroupStageProps) {
   const { t } = useTranslation();
@@ -88,6 +96,8 @@ export function PhaseGroupStage({
   const [assignDialog, setAssignDialog] = useState<LocalGroup | null>(null);
   const [quizDialog, setQuizDialog] = useState<LocalGroup | null>(null);
   const [quizSearch, setQuizSearch] = useState("");
+  const [gameDialog, setGameDialog] = useState<LocalGroup | null>(null);
+  const [gameSearch, setGameSearch] = useState("");
   const [assignSearch, setAssignSearch] = useState("");
   const [assignSelected, setAssignSelected] = useState<string[]>([]);
   const [advanceSelected, setAdvanceSelected] = useState<Record<string, string[]>>({});
@@ -122,6 +132,7 @@ export function PhaseGroupStage({
       id: `grp-${Date.now()}`,
       name: newGroupName.trim(),
       quizIds: [],
+      gameIds: [],
       members: initialMembers,
       stage: newGroupStage,
       sources: newGroupSources,
@@ -203,6 +214,25 @@ export function PhaseGroupStage({
           setQuizDialog(updatedGroup);
         }
         
+        return updatedGroup;
+      })
+    );
+  };
+
+  const handleAssignGame = (groupId: string, gameName: string) => {
+    onGroupsChange(
+      groups.map((g) => {
+        if (g.id !== groupId) return g;
+        const has = g.gameIds.includes(gameName);
+        const updatedGroup = {
+          ...g,
+          gameIds: has
+            ? g.gameIds.filter((gm) => gm !== gameName)
+            : [...g.gameIds, gameName],
+        };
+        if (gameDialog?.id === groupId) {
+          setGameDialog(updatedGroup);
+        }
         return updatedGroup;
       })
     );
@@ -351,6 +381,11 @@ export function PhaseGroupStage({
                         <BookOpen className="h-3 w-3" /> {group.quizIds.length} quiz
                       </Badge>
                     )}
+                    {group.gameIds.length > 0 && (
+                      <Badge variant="outline" className="text-[10px] h-5 gap-1 text-violet-600 border-violet-300 bg-violet-500/10">
+                        <Gamepad2 className="h-3 w-3" /> {group.gameIds.length} game
+                      </Badge>
+                    )}
                     {advancedCount > 0 && (
                       <Badge variant="outline" className="text-[10px] h-5 gap-0.5 text-emerald-600 border-emerald-300 bg-emerald-500/10">
                         <ArrowUpRight className="h-3 w-3" /> {advancedCount}
@@ -362,6 +397,12 @@ export function PhaseGroupStage({
                       <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
                         onClick={(e) => { e.stopPropagation(); setQuizDialog(group); }}>
                         <BookOpen className="h-3 w-3" /> {t("competition.assign_quiz")}
+                      </Button>
+                    )}
+                    {group.stage !== "Champion" && (
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                        onClick={(e) => { e.stopPropagation(); setGameDialog(group); }}>
+                        <Gamepad2 className="h-3 w-3" /> {t("competition.assign_game") || "Assign Game"}
                       </Button>
                     )}
                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
@@ -773,6 +814,66 @@ export function PhaseGroupStage({
           </Tabs>
           <DialogFooter>
             <Button variant="outline" onClick={() => setQuizDialog(null)}>{t("action.close")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Game Dialog */}
+      <Dialog open={!!gameDialog} onOpenChange={(open) => { if (!open) { setGameDialog(null); setGameSearch(""); } }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gamepad2 className="h-5 w-5" />
+              {t("competition.assign_game") || "Assign Game"} — {gameDialog?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mb-2">
+            <SearchInput
+              placeholder={t("competition.search_game") || "Search game..."}
+              value={gameSearch}
+              onSearch={(val) => setGameSearch(val)}
+            />
+          </div>
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {(() => {
+              const filteredGames = games.filter(g => g.name.toLowerCase().includes(gameSearch.toLowerCase()));
+              if (filteredGames.length === 0) {
+                return (
+                  <div className="text-center py-6 border rounded-lg border-dashed">
+                    <p className="text-sm text-muted-foreground">{t("competition.no_games_found") || "No games found."}</p>
+                  </div>
+                );
+              }
+              return filteredGames.map((game) => {
+                const isAssigned = gameDialog?.gameIds.includes(game.name);
+                return (
+                  <div key={game.name}
+                    onClick={() => gameDialog && handleAssignGame(gameDialog.id, game.name)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (gameDialog) handleAssignGame(gameDialog.id, game.name);
+                      }
+                    }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
+                      isAssigned ? "bg-violet-500/10 border-violet-400/30" : "hover:bg-muted/50"
+                    }`}>
+                    <div className="flex items-center gap-3">
+                      <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 bg-background border-muted-foreground/40" />
+                      <div className="text-left">
+                        <p className="font-medium capitalize">{game.name}</p>
+                        <p className="text-xs text-muted-foreground">{game.count.toLocaleString("id-ID")} sessions</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGameDialog(null)}>{t("action.close") || "Close"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

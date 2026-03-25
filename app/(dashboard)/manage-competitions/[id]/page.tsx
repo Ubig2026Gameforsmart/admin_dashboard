@@ -35,7 +35,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PhaseRegistration } from "./_components/phase-registration";
 import { PhasePayment } from "./_components/phase-payment";
 import { PhaseQualification } from "./_components/phase-qualification";
-import { PhaseGroupStage, LocalGroup } from "./_components/phase-group-stage";
+import { PhaseGroupStage, LocalGroup, GameApp } from "./_components/phase-group-stage";
 import { PhaseCompleted } from "./_components/phase-completed";
 
 // --- DUMMY DATA ---
@@ -102,6 +102,7 @@ export default function CompetitionDetailPage() {
 
   // Group Stage local state
   const [localGroups, setLocalGroups] = useState<LocalGroup[]>([]);
+  const [availableGames, setAvailableGames] = useState<GameApp[]>([]);
 
   useEffect(() => {
     async function getDetail() {
@@ -121,6 +122,33 @@ export default function CompetitionDetailPage() {
       setIsLoading(false);
     }
     getDetail();
+
+    // Fetch available games from game_sessions.application
+    async function fetchGames() {
+      const { data, error } = await supabase
+        .rpc('get_distinct_applications')
+        .select('*');
+      
+      // Fallback: if RPC doesn't exist, query directly
+      if (error) {
+        const { data: rawData } = await supabase
+          .from("game_sessions")
+          .select("application");
+        if (rawData) {
+          const countMap: Record<string, number> = {};
+          rawData.forEach((row: any) => {
+            const app = row.application;
+            countMap[app] = (countMap[app] || 0) + 1;
+          });
+          setAvailableGames(
+            Object.entries(countMap)
+              .map(([name, count]) => ({ name, count }))
+              .sort((a, b) => a.name.localeCompare(b.name))
+          );
+        }
+      }
+    }
+    fetchGames();
   }, [compId, supabase, router]);
 
   // --- Player Management ---
@@ -146,6 +174,7 @@ export default function CompetitionDetailPage() {
     draft: { label: t("comp_detail.status_draft") || "Draft", className: "bg-gray-500/15 text-gray-500 border-gray-200 dark:text-gray-400 dark:border-gray-700" },
     completed: { label: t("comp_detail.status_completed") || "Completed", className: "bg-blue-500/15 text-blue-600 border-blue-200 dark:text-blue-400 dark:border-blue-800" },
     coming_soon: { label: t("comp_detail.status_coming_soon") || "Coming Soon", className: "bg-orange-500/15 text-orange-600 border-orange-200 dark:text-orange-400 dark:border-orange-800" },
+    finished: { label: t("comp_detail.status_finished") || "Finished", className: "bg-purple-500/15 text-purple-600 border-purple-200 dark:text-purple-400 dark:border-purple-800" },
   };
 
   function formatCurrency(val: string | number | null) {
@@ -389,6 +418,7 @@ export default function CompetitionDetailPage() {
             finalists={players.filter((p) => p.isFinalist)}
             groups={localGroups}
             quizzes={MOCK_QUIZZES}
+            games={availableGames}
             onGroupsChange={setLocalGroups}
           />
         </TabsContent>

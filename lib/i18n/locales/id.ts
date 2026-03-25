@@ -968,4 +968,9 @@ export const id: Record<string, string> = {
   "rejection_templates.deleted": "Template berhasil dihapus.",
   "rejection_templates.enter_reason_en": "Masukkan alasan dalam Bahasa Inggris...",
   "rejection_templates.enter_reason_id": "Masukkan alasan dalam Bahasa Indonesia...",
+
+  // Assign Game
+  "competition.assign_game": "Tugaskan Game",
+  "competition.search_game": "Cari game...",
+  "competition.no_games_found": "Game tidak ditemukan.",
 };

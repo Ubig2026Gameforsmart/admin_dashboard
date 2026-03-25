@@ -53,7 +53,7 @@ interface Competition {
   id: string;
   title: string;
   slug: string;
-  status: "draft" | "published" | "completed";
+  status: "draft" | "published" | "completed" | "coming_soon" | "finished";
   regStartDate: string;
   regEndDate: string;
   finalEndDate: string | null;
@@ -180,6 +180,11 @@ export function ManageCompetitionsClient() {
     },
     coming_soon: {
       label: t("comp_detail.status_coming_soon") || "Coming Soon",
+      className: "bg-orange-500/15 text-orange-600 border-orange-200 dark:text-orange-400 dark:border-orange-800",
+    },
+    finished: {
+      label: t("comp_detail.status_finished") || "Finished",
+      className: "bg-purple-500/15 text-purple-600 border-purple-200 dark:text-purple-400 dark:border-purple-800",
     },
   };
 
