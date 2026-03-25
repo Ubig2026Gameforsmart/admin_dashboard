@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { DummyPlayer, MockQuiz } from "@/types/competition";
 import {
   Plus, Trash2, Users, UserPlus, BookOpen, Trophy, Clock,
-  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit, Gamepad2,
+  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit, Gamepad2, Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,8 @@ interface PhaseGroupStageProps {
   quizzes: MockQuiz[];
   games: GameApp[];
   onGroupsChange: (groups: LocalGroup[]) => void;
+  onSave?: () => void;
+  isSaving?: boolean;
 }
 
 export interface LocalGroup {
@@ -86,6 +88,8 @@ export function PhaseGroupStage({
   quizzes,
   games,
   onGroupsChange,
+  onSave,
+  isSaving,
 }: PhaseGroupStageProps) {
   const { t } = useTranslation();
   const [newGroupName, setNewGroupName] = useState("");
@@ -272,15 +276,17 @@ export function PhaseGroupStage({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Users className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">{t("competition.phase_group_stage")}</h2>
-        <Badge variant="secondary" className="text-xs">
-          {finalists.length} {t("competition.finalist")}
-        </Badge>
-        <Badge variant="outline" className="text-xs">
-          {allAssignedIds.length} {t("competition.assigned")}
-        </Badge>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <Users className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">{t("competition.phase_group_stage") || "Group Stage"}</h2>
+          <Badge variant="secondary" className="text-xs">
+            {finalists.length} {t("competition.finalist")}
+          </Badge>
+          <Badge variant="outline" className="text-xs">
+            {allAssignedIds.length} {t("competition.assigned")}
+          </Badge>
+        </div>
       </div>
 
       {/* Add Group */}
@@ -342,10 +348,23 @@ export function PhaseGroupStage({
           </DropdownMenu>
         )}
 
-        <Button onClick={handleAddGroup} className="gap-1.5 h-9 shrink-0 md:ml-auto">
-          <Plus className="h-4 w-4" />
-          {t("competition.add_group")}
-        </Button>
+        <div className="flex items-center gap-2 shrink-0 md:ml-auto">
+          <Button onClick={handleAddGroup} variant="secondary" className="gap-1.5 h-9 shrink-0">
+            <Plus className="h-4 w-4" />
+            {t("competition.add_group") || "Add Group"}
+          </Button>
+
+          {onSave && (
+            <Button onClick={onSave} disabled={isSaving} className="gap-1.5 h-9 px-4 shrink-0 transition-all">
+              {isSaving ? (
+                <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Save
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Groups */}
