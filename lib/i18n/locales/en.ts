@@ -59,7 +59,7 @@ export const en: Record<string, string> = {
   "action.view": "View",
   "action.add": "Add",
   "action.filter": "Filter",
-  "action.close": "Tutup",
+  "action.close": "Close",
   "action.show_all": "Show All",
   "action.show_less": "Show Less",
   "stats.average": "Average",

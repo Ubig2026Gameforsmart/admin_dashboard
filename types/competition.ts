@@ -88,6 +88,8 @@ export interface MockQuiz {
   title: string;
   questionCount: number;
   duration: number; // minutes
+  isPublic?: boolean;
+  creatorId?: string;
 }
 
 // ===== Competition Phase =====

@@ -55,6 +55,7 @@ interface PhaseGroupStageProps {
   onGroupsChange: (groups: LocalGroup[]) => void;
   onSave?: () => void;
   isSaving?: boolean;
+  currentUserId?: string | null;
 }
 
 export interface LocalGroup {
@@ -90,6 +91,7 @@ export function PhaseGroupStage({
   onGroupsChange,
   onSave,
   isSaving,
+  currentUserId,
 }: PhaseGroupStageProps) {
   const { t } = useTranslation();
   const [newGroupName, setNewGroupName] = useState("");
@@ -182,7 +184,7 @@ export function PhaseGroupStage({
       return {
         playerId: pId,
         playerName: player?.name || pId,
-        score: Math.round((player?.avgScore || 50) + (Math.random() * 20 - 10)),
+        score: Math.min(100, Math.max(0, Math.round((player?.avgScore || 50) + (Math.random() * 20 - 10)))),
         timeSeconds: Math.floor(Math.random() * 300) + 60,
         isAdvanced: false,
       };
@@ -257,18 +259,23 @@ export function PhaseGroupStage({
   const handleAdvance = (groupId: string) => {
     const ids = advanceSelected[groupId] || [];
     if (ids.length === 0) return;
-    onGroupsChange(
-      groups.map((g) =>
-        g.id === groupId
-          ? {
-              ...g,
-              members: g.members.map((m) =>
-                ids.includes(m.playerId) ? { ...m, isAdvanced: true } : m
-              ),
-            }
-          : g
-      )
+    
+    const newGroups = groups.map((g) =>
+      g.id === groupId
+        ? {
+            ...g,
+            members: g.members.map((m) =>
+              ids.includes(m.playerId) ? { ...m, isAdvanced: true } : m
+            ),
+          }
+        : g
     );
+
+    onGroupsChange(newGroups);
+    if (detailDialog?.id === groupId) {
+      setDetailDialog(newGroups.find(g => g.id === groupId) || null);
+    }
+
     setAdvanceSelected((prev) => ({ ...prev, [groupId]: [] }));
     toast.success(`${ids.length} ${t("competition.advancing")}`);
   };
@@ -338,7 +345,7 @@ export function PhaseGroupStage({
                     );
                   }}
                 >
-                  {g.name}
+                  <span className="truncate max-w-[130px] inline-block" title={g.name}>{g.name}</span>
                 </DropdownMenuCheckboxItem>
               ))}
               {groups.length === 0 && (
@@ -386,7 +393,7 @@ export function PhaseGroupStage({
                   onClick={() => setDetailDialog(group)}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <h3 className="font-semibold text-sm truncate" title={group.name}>{group.name}</h3>
+                    <h3 className="font-semibold text-sm truncate max-w-[150px] md:max-w-[300px]" title={group.name}>{group.name}</h3>
                     {group.stage && (
                       <Badge variant="outline" className="text-[10px] h-5">
                         {group.stage}
@@ -731,30 +738,28 @@ export function PhaseGroupStage({
 
       {/* Assign Quiz Dialog */}
       <Dialog open={!!quizDialog} onOpenChange={(open) => { if (!open) { setQuizDialog(null); setQuizSearch(""); } }}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              {t("competition.assign_quiz")} — {quizDialog?.name}
+            <DialogTitle className="flex items-center gap-2 max-w-full overflow-hidden">
+              <BookOpen className="h-5 w-5 shrink-0" />
+              <span className="truncate">{t("competition.assign_quiz")} — {quizDialog?.name}</span>
             </DialogTitle>
           </DialogHeader>
-          <div className="mb-2">
+          <div className="mb-2 w-full min-w-0">
             <SearchInput
               placeholder={t("quiz.search") || "Search quiz..."}
               value={quizSearch}
               onSearch={(val) => setQuizSearch(val)}
             />
           </div>
-          <Tabs defaultValue="public" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
+          <Tabs defaultValue="public" className="w-full min-w-0">
+            <TabsList className="grid w-full min-w-0 grid-cols-2 mb-4">
               <TabsTrigger value="public">{t("competition.public_quiz") || "Public Quiz"}</TabsTrigger>
               <TabsTrigger value="my">{t("competition.my_quiz") || "My Quiz"}</TabsTrigger>
             </TabsList>
-            
-            {/* Public Quiz Tab */}
-            <TabsContent value="public" className="space-y-2 mt-0">
+            <TabsContent value="public" className="space-y-2 mt-0 overflow-y-auto pr-1 max-h-[45vh] w-full min-w-0">
               {(() => {
-                const filteredQuizzes = quizzes.filter(q => q.title.toLowerCase().includes(quizSearch.toLowerCase()));
+                const filteredQuizzes = quizzes.filter(q => q.isPublic && q.title.toLowerCase().includes(quizSearch.toLowerCase()));
                 if (filteredQuizzes.length === 0) {
                   return (
                     <div className="text-center py-6 border rounded-lg border-dashed">
@@ -775,13 +780,13 @@ export function PhaseGroupStage({
                           if (quizDialog) handleAssignQuiz(quizDialog.id, quiz.id);
                         }
                       }}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
+                      className={`w-full max-w-full overflow-hidden flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
                         isAssigned ? "bg-primary/10 border-primary/30" : "hover:bg-muted/50"
                       }`}>
-                      <div className="flex items-center gap-3">
-                        <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 bg-background border-muted-foreground/40" />
-                        <div className="text-left">
-                          <p className="font-medium">{quiz.title}</p>
+                      <div className="flex items-center gap-3 w-full min-w-0">
+                        <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 shrink-0 bg-background border-muted-foreground/40" />
+                        <div className="text-left flex-1 min-w-0 pr-2">
+                          <p className="font-medium truncate" title={quiz.title}>{quiz.title}</p>
                           <p className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")}</p>
                         </div>
                       </div>
@@ -790,11 +795,9 @@ export function PhaseGroupStage({
                 });
               })()}
             </TabsContent>
-            
-            {/* My Quiz Tab */}
-            <TabsContent value="my" className="space-y-2 mt-0">
+            <TabsContent value="my" className="space-y-2 mt-0 overflow-y-auto pr-1 max-h-[45vh] w-full min-w-0">
               {(() => {
-                const filteredQuizzes = [...quizzes].reverse().filter(q => q.title.toLowerCase().includes(quizSearch.toLowerCase()));
+                const filteredQuizzes = [...quizzes].reverse().filter(q => q.creatorId === currentUserId && q.title.toLowerCase().includes(quizSearch.toLowerCase()));
                 if (filteredQuizzes.length === 0) {
                   return (
                     <div className="text-center py-6 border rounded-lg border-dashed">
@@ -815,13 +818,13 @@ export function PhaseGroupStage({
                           if (quizDialog) handleAssignQuiz(quizDialog.id, quiz.id);
                         }
                       }}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
+                      className={`w-full max-w-full overflow-hidden flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
                         isAssigned ? "bg-primary/10 border-primary/30" : "hover:bg-muted/50"
                       }`}>
-                      <div className="flex items-center gap-3">
-                        <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 bg-background border-muted-foreground/40" />
-                        <div className="text-left">
-                          <p className="font-medium">{quiz.title}</p>
+                      <div className="flex items-center gap-3 w-full min-w-0">
+                        <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 shrink-0 bg-background border-muted-foreground/40" />
+                        <div className="text-left flex-1 min-w-0 pr-2">
+                          <p className="font-medium truncate" title={quiz.title}>{quiz.title}</p>
                           <p className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")}</p>
                         </div>
                       </div>
@@ -831,7 +834,7 @@ export function PhaseGroupStage({
               })()}
             </TabsContent>
           </Tabs>
-          <DialogFooter>
+          <DialogFooter className="w-full min-w-0">
             <Button variant="outline" onClick={() => setQuizDialog(null)}>{t("action.close")}</Button>
           </DialogFooter>
         </DialogContent>
@@ -839,11 +842,11 @@ export function PhaseGroupStage({
 
       {/* Assign Game Dialog */}
       <Dialog open={!!gameDialog} onOpenChange={(open) => { if (!open) { setGameDialog(null); setGameSearch(""); } }}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[400px] max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Gamepad2 className="h-5 w-5" />
-              {t("competition.assign_game") || "Assign Game"} — {gameDialog?.name}
+            <DialogTitle className="flex items-center gap-2 max-w-full overflow-hidden">
+              <Gamepad2 className="h-5 w-5 shrink-0" />
+              <span className="truncate">{t("competition.assign_game") || "Assign Game"} — {gameDialog?.name}</span>
             </DialogTitle>
           </DialogHeader>
           <div className="mb-2">
@@ -876,13 +879,13 @@ export function PhaseGroupStage({
                         if (gameDialog) handleAssignGame(gameDialog.id, game.name);
                       }
                     }}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
+                    className={`w-full max-w-full overflow-hidden flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
                       isAssigned ? "bg-violet-500/10 border-violet-400/30" : "hover:bg-muted/50"
                     }`}>
-                    <div className="flex items-center gap-3">
-                      <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 bg-background border-muted-foreground/40" />
-                      <div className="text-left">
-                        <p className="font-medium capitalize">{game.name}</p>
+                    <div className="flex items-center gap-3 w-full min-w-0">
+                      <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 shrink-0 bg-background border-muted-foreground/40" />
+                      <div className="text-left flex-1 min-w-0 pr-2">
+                        <p className="font-medium capitalize truncate" title={game.name}>{game.name}</p>
                         <p className="text-xs text-muted-foreground">{game.count.toLocaleString("id-ID")} sessions</p>
                       </div>
                     </div>
@@ -911,13 +914,17 @@ export function PhaseGroupStage({
             <AlertDialogAction
               onClick={() => {
                 if (playerToUnAdvance) {
-                  onGroupsChange(
-                    groups.map((g) =>
-                      g.id === playerToUnAdvance.groupId
-                        ? { ...g, members: g.members.map((m) => m.playerId === playerToUnAdvance.playerId ? { ...m, isAdvanced: false } : m) }
-                        : g
-                    )
+                  const newGroups = groups.map((g) =>
+                    g.id === playerToUnAdvance.groupId
+                      ? { ...g, members: g.members.map((m) => m.playerId === playerToUnAdvance.playerId ? { ...m, isAdvanced: false } : m) }
+                      : g
                   );
+                  onGroupsChange(newGroups);
+                  
+                  if (detailDialog?.id === playerToUnAdvance.groupId) {
+                    setDetailDialog(newGroups.find(g => g.id === playerToUnAdvance.groupId) || null);
+                  }
+
                   setPlayerToUnAdvance(null);
                   toast.success(t("comp_detail.unadvance_success") || "Advanced status revoked");
                 }
@@ -988,7 +995,9 @@ export function PhaseGroupStage({
                               );
                             }}
                           >
-                            <span className="truncate">{g.name} <span className="text-muted-foreground">({g.stage || "Semifinal"})</span></span>
+                            <span className="truncate max-w-[280px] inline-block mb-[-4px]" title={g.name}>
+                              {g.name} <span className="text-muted-foreground">({g.stage || "Semifinal"})</span>
+                            </span>
                           </DropdownMenuCheckboxItem>
                         );
                       })}

@@ -66,6 +66,7 @@ export default function GlobalDashboardPage() {
     <div className="space-y-8">
       {/* Page Header */}
       <div>
+        <h1>IWAK</h1>
         <h1 className="text-3xl font-bold text-foreground">
           {t("page.global_dashboard")}
         </h1>
