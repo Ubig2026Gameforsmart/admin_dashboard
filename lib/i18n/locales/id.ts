@@ -934,6 +934,7 @@ export const id: Record<string, string> = {
   "competition.public_quiz": "Kuis Publik",
   "competition.my_quiz": "Kuis Saya",
   "competition.no_quizzes_found": "Kuis tidak ditemukan.",
+  "competition.manage": "Kelola",
 
   // Un-advance Confirm Dialog
   "common.are_you_sure": "Apakah Anda yakin?",
