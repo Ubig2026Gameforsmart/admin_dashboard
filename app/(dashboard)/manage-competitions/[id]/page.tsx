@@ -40,15 +40,7 @@ import { PhaseQualification } from "./_components/phase-qualification";
 import { PhaseGroupStage, LocalGroup, GameApp } from "./_components/phase-group-stage";
 import { PhaseCompleted } from "./_components/phase-completed";
 
-// --- MOCK QUIZZES ---
-
-const MOCK_QUIZZES: MockQuiz[] = [
-  { id: "q1", title: "Sains Dasar", questionCount: 20, duration: 30 },
-  { id: "q2", title: "Matematika Logika", questionCount: 15, duration: 25 },
-  { id: "q3", title: "IPA Terpadu", questionCount: 25, duration: 40 },
-  { id: "q4", title: "Pengetahuan Umum", questionCount: 30, duration: 35 },
-  { id: "q5", title: "Bahasa Indonesia", questionCount: 20, duration: 20 },
-];
+// Deleted MOCK_QUIZZES in favor of real database fetching
 
 export default function CompetitionDetailPage() {
   const { t } = useTranslation();
@@ -86,9 +78,20 @@ export default function CompetitionDetailPage() {
   // Group Stage local state
   const [localGroups, setLocalGroups] = useState<LocalGroup[]>([]);
   const [availableGames, setAvailableGames] = useState<GameApp[]>([]);
+  const [availableQuizzes, setAvailableQuizzes] = useState<MockQuiz[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function getDetail() {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user) {
+        const { data: profData } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("auth_user_id", authData.user.id)
+          .single();
+        if (profData) setCurrentUserId(profData.id);
+      }
       const { data, error } = await supabase
         .from("competitions")
         .select("*")
@@ -178,6 +181,30 @@ export default function CompetitionDetailPage() {
       setIsLoading(false);
     }
     getDetail();
+
+    // Fetch available quizzes directly from quizzes table
+    async function fetchQuizzes() {
+      const { data, error } = await supabase
+        .from("quizzes")
+        .select("id, title, questions, is_public, creator_id");
+
+      if (!error && data) {
+        setAvailableQuizzes(
+          data.map((q: any) => {
+            const count = Array.isArray(q.questions) ? q.questions.length : 0;
+            return {
+              id: q.id,
+              title: q.title || "Untitled Quiz",
+              questionCount: count,
+              duration: Math.ceil(count * 0.5), // Assuming 30 seconds per question => converted to minutes
+              isPublic: q.is_public || false,
+              creatorId: q.creator_id,
+            };
+          })
+        );
+      }
+    }
+    fetchQuizzes();
 
     // Fetch available games from game_sessions.application
     async function fetchGames() {
@@ -643,11 +670,12 @@ export default function CompetitionDetailPage() {
           <PhaseGroupStage
             finalists={players.filter((p) => p.isFinalist)}
             groups={localGroups}
-            quizzes={MOCK_QUIZZES}
+            quizzes={availableQuizzes}
             games={availableGames}
             onGroupsChange={setLocalGroups}
             onSave={handleSaveGroupsToDb}
             isSaving={isSavingGroups}
+            currentUserId={currentUserId}
           />
         </TabsContent>
 
