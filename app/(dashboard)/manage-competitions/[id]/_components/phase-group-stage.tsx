@@ -465,6 +465,7 @@ export function PhaseGroupStage({
             return (
               <>
                 <DialogHeader className="flex flex-row items-center justify-between pr-6 gap-4">
+                <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                   <DialogTitle className="flex items-center gap-2 min-w-0">
                     <Trophy className="h-5 w-5 text-yellow-500 shrink-0" />
                     <span className="truncate" title={group.name}>{group.name}</span>
@@ -474,6 +475,33 @@ export function PhaseGroupStage({
                       </Badge>
                     )}
                   </DialogTitle>
+                  {(group.quizIds.length > 0 || group.gameIds.length > 0) && (
+                    <div className="flex items-center gap-2 pl-7 flex-wrap">
+                      {group.quizIds.length > 0 && (
+                        <Badge 
+                          variant="secondary" 
+                          className="text-[10px] cursor-pointer hover:bg-muted-foreground/10 transition-colors"
+                          onClick={() => { setDetailDialog(null); setTimeout(() => setQuizDialog(group), 150); }}
+                          title={t("competition.assign_quiz") + ` (${group.quizIds.length})`}
+                        >
+                          <BookOpen className="h-3 w-3 mr-1" />
+                          {group.quizIds.length} {group.quizIds.length === 1 ? "Quiz" : "Quizzes"}
+                        </Badge>
+                      )}
+                      {group.gameIds.length > 0 && (
+                        <Badge 
+                          variant="secondary" 
+                          className="text-[10px] cursor-pointer text-violet-600 border-violet-300 bg-violet-500/10 hover:bg-violet-500/20 transition-colors"
+                          onClick={() => { setDetailDialog(null); setTimeout(() => setGameDialog(group), 150); }}
+                          title={(t("competition.assign_game") || "Assign Game") + ` (${group.gameIds.length})`}
+                        >
+                          <Gamepad2 className="h-3 w-3 mr-1" />
+                          {group.gameIds.length} {group.gameIds.length === 1 ? "Game" : "Games"}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
                   <div className="w-56 shrink-0 mt-0">
                     <SearchInput
                       placeholder={t("comp_detail.search_player") || "Search player..."}
