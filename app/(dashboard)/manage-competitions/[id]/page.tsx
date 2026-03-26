@@ -30,6 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { DummyPlayer, MockQuiz, CompetitionPhase } from "@/types/competition";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -66,6 +67,21 @@ export default function CompetitionDetailPage() {
 
   // Wizard phase state
   const [activePhase, setActivePhase] = useState<CompetitionPhase>("registration");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedPhase = localStorage.getItem(`comp_phase_${compId}`) as CompetitionPhase;
+      if (savedPhase) setActivePhase(savedPhase);
+    }
+  }, [compId]);
+
+  const handlePhaseChange = (val: string) => {
+    const phase = val as CompetitionPhase;
+    setActivePhase(phase);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`comp_phase_${compId}`, phase);
+    }
+  };
 
   // Group Stage local state
   const [localGroups, setLocalGroups] = useState<LocalGroup[]>([]);
@@ -350,8 +366,58 @@ export default function CompetitionDetailPage() {
 
   if (isLoading || !detail) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <p className="text-muted-foreground animate-pulse">Loading competition details...</p>
+      <div className="space-y-6 animate-pulse">
+        {/* Breadcrumb Skeleton */}
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-4 shrink-0" />
+          <Skeleton className="h-4 w-40" />
+        </div>
+
+        {/* Title & Edit Button Skeleton */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <Skeleton className="h-10 w-3/4 md:w-1/2" />
+          <Skeleton className="h-9 w-24" />
+        </div>
+
+        {/* Badges / Info Skeleton */}
+        <div className="flex flex-wrap gap-4 border-y border-border py-4">
+          <Skeleton className="h-6 w-24 rounded-full" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+
+        {/* Poster & Description Skeleton */}
+        <div className="flex flex-col md:flex-row gap-8">
+          <Skeleton className="h-[120px] w-[160px] rounded-lg shrink-0" />
+          <div className="space-y-5 flex-1 w-full">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Tabs Skeleton */}
+        <div className="space-y-6 pt-2">
+          <div className="flex gap-4 border-b border-border pb-0 w-full overflow-x-hidden">
+             <Skeleton className="h-9 w-28 rounded-b-none" />
+             <Skeleton className="h-9 w-24 rounded-b-none" />
+             <Skeleton className="h-9 w-32 rounded-b-none" />
+             <Skeleton className="h-9 w-32 rounded-b-none" />
+          </div>
+          <Skeleton className="h-[400px] w-full rounded-xl" />
+        </div>
       </div>
     );
   }
@@ -538,7 +604,7 @@ export default function CompetitionDetailPage() {
       <Separator />
 
       {/* === WIZARD PHASE TABS === */}
-      <Tabs value={activePhase} onValueChange={(val) => setActivePhase(val as CompetitionPhase)} className="w-full relative z-0">
+      <Tabs value={activePhase} onValueChange={handlePhaseChange} className="w-full relative z-0">
         <TabsList className="mb-4 w-full justify-start h-auto bg-transparent p-0 gap-2 overflow-x-auto rounded-none border-b no-scrollbar">
           <TabsTrigger value="registration" className="relative h-9 rounded-none border-b-2 border-b-transparent bg-transparent px-4 pb-3 pt-2 font-medium text-muted-foreground shadow-none transition-none data-[state=active]:border-b-primary data-[state=active]:text-foreground data-[state=active]:shadow-none cursor-pointer">
             {t("competition.phase_registration") || "Registration"}
