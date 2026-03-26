@@ -39,6 +39,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Search, ChevronDown } from "lucide-react";
 import { LocalBracketView } from "./local-bracket-view";
 
@@ -478,26 +479,77 @@ export function PhaseGroupStage({
                   {(group.quizIds.length > 0 || group.gameIds.length > 0) && (
                     <div className="flex items-center gap-2 pl-7 flex-wrap">
                       {group.quizIds.length > 0 && (
-                        <Badge 
-                          variant="secondary" 
-                          className="text-[10px] cursor-pointer hover:bg-muted-foreground/10 transition-colors"
-                          onClick={() => { setDetailDialog(null); setTimeout(() => setQuizDialog(group), 150); }}
-                          title={t("competition.assign_quiz") + ` (${group.quizIds.length})`}
-                        >
-                          <BookOpen className="h-3 w-3 mr-1" />
-                          {group.quizIds.length} {group.quizIds.length === 1 ? "Quiz" : "Quizzes"}
-                        </Badge>
+                        <Popover>
+                          <PopoverTrigger onClick={(e) => e.stopPropagation()}>
+                            <Badge 
+                              variant="secondary" 
+                              className="text-[10px] cursor-pointer hover:bg-muted-foreground/10 transition-colors"
+                            >
+                              <BookOpen className="h-3 w-3 mr-1" />
+                              {group.quizIds.length} {group.quizIds.length === 1 ? "Quiz" : "Quizzes"}
+                            </Badge>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-[320px] p-0 shadow-xl border-muted">
+                            <div className="p-3 border-b bg-muted/20">
+                              <h4 className="font-semibold text-sm flex items-center gap-2">
+                                <BookOpen className="h-4 w-4 text-primary" /> {t("competition.assign_quiz") || "Assigned Quizzes"}
+                              </h4>
+                            </div>
+                            <div className="max-h-[250px] overflow-y-auto p-2">
+                              {group.quizIds.map(qId => {
+                                const quiz = quizzes.find(q => q.id === qId);
+                                return (
+                                  <div key={qId} className="flex flex-col py-1.5 px-2 hover:bg-muted/50 rounded-md transition-colors">
+                                    <span className="text-sm font-medium leading-tight truncate" title={quiz?.title || qId}>{quiz?.title || qId}</span>
+                                    {quiz && <span className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")}</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="p-2 border-t bg-muted/10">
+                              <Button size="sm" variant="ghost" className="w-full text-xs h-8" onClick={() => { setDetailDialog(null); setTimeout(() => setQuizDialog(group), 150); }}>
+                                {t("competition.manage") || "Manage"} <ArrowUpRight className="ml-1 h-3 w-3" />
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       )}
+                      
                       {group.gameIds.length > 0 && (
-                        <Badge 
-                          variant="secondary" 
-                          className="text-[10px] cursor-pointer text-violet-600 border-violet-300 bg-violet-500/10 hover:bg-violet-500/20 transition-colors"
-                          onClick={() => { setDetailDialog(null); setTimeout(() => setGameDialog(group), 150); }}
-                          title={(t("competition.assign_game") || "Assign Game") + ` (${group.gameIds.length})`}
-                        >
-                          <Gamepad2 className="h-3 w-3 mr-1" />
-                          {group.gameIds.length} {group.gameIds.length === 1 ? "Game" : "Games"}
-                        </Badge>
+                        <Popover>
+                          <PopoverTrigger onClick={(e) => e.stopPropagation()}>
+                            <Badge 
+                              variant="secondary" 
+                              className="text-[10px] cursor-pointer text-violet-600 border-violet-300 bg-violet-500/10 hover:bg-violet-500/20 transition-colors"
+                            >
+                              <Gamepad2 className="h-3 w-3 mr-1" />
+                              {group.gameIds.length} {group.gameIds.length === 1 ? "Game" : "Games"}
+                            </Badge>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-[320px] p-0 shadow-xl border-violet-500/20">
+                            <div className="p-3 border-b bg-violet-500/5">
+                              <h4 className="font-semibold text-sm flex items-center gap-2 text-violet-600">
+                                <Gamepad2 className="h-4 w-4" /> {t("competition.assign_game") || "Assigned Games"}
+                              </h4>
+                            </div>
+                            <div className="max-h-[250px] overflow-y-auto p-2">
+                              {group.gameIds.map(gId => {
+                                const game = games.find(g => g.name === gId);
+                                return (
+                                  <div key={gId} className="flex flex-col py-1.5 px-2 hover:bg-muted/50 rounded-md transition-colors">
+                                    <span className="text-sm font-medium leading-tight truncate capitalize" title={game?.name || gId}>{game?.name || gId}</span>
+                                    {game && <span className="text-xs text-muted-foreground">{game.count.toLocaleString("id-ID")} sessions</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="p-2 border-t bg-violet-500/5">
+                              <Button size="sm" variant="ghost" className="w-full text-xs h-8 text-violet-600 hover:text-violet-700 hover:bg-violet-500/10" onClick={() => { setDetailDialog(null); setTimeout(() => setGameDialog(group), 150); }}>
+                                {t("competition.manage") || "Manage"} <ArrowUpRight className="ml-1 h-3 w-3" />
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       )}
                     </div>
                   )}
@@ -1050,7 +1102,13 @@ export function PhaseGroupStage({
       {groups.length > 0 && (
         <>
           <div className="border-t pt-4 mt-2" />
-          <LocalBracketView groups={groups} />
+          <LocalBracketView 
+            groups={groups} 
+            quizzes={quizzes} 
+            games={games} 
+            onManageQuiz={(g) => { setDetailDialog(null); setTimeout(() => setQuizDialog(g), 150); }} 
+            onManageGame={(g) => { setDetailDialog(null); setTimeout(() => setGameDialog(g), 150); }} 
+          />
         </>
       )}
     </div>
