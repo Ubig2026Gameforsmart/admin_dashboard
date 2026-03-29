@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, SearchIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
@@ -22,6 +21,15 @@ import {
 export interface ComboboxOption {
   value: string;
   label: string;
+  rightElement?: React.ReactNode;
+  /** Used for tab-based grouping */
+  group?: string;
+}
+
+export interface ComboboxTab {
+  id: string;
+  label: string;
+  icon?: React.ReactNode;
 }
 
 interface ComboboxProps {
@@ -33,6 +41,8 @@ interface ComboboxProps {
   emptyText?: string;
   className?: string;
   disabled?: boolean;
+  /** Optional tabs for grouping options. Options must have matching `group` field. */
+  tabs?: ComboboxTab[];
 }
 
 export function Combobox({
@@ -44,10 +54,43 @@ export function Combobox({
   emptyText = "No results found.",
   className,
   disabled = false,
+  tabs,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
+  const [inputValue, setInputValue] = React.useState("");
+  const [appliedFilter, setAppliedFilter] = React.useState("");
+  const [activeTab, setActiveTab] = React.useState<string>(tabs?.[0]?.id || "");
 
   const selectedOption = options.find((option) => option.value === value);
+
+  // Reset filter when popover closes
+  React.useEffect(() => {
+    if (!open) {
+      setInputValue("");
+      setAppliedFilter("");
+      if (tabs?.[0]) setActiveTab(tabs[0].id);
+    }
+  }, [open, tabs]);
+
+  // Filter options: by tab group first, then by search term
+  const filteredOptions = React.useMemo(() => {
+    let result = options;
+
+    // Filter by active tab if tabs are provided
+    if (tabs && tabs.length > 0 && activeTab) {
+      // Keep items without group (like "None") visible in all tabs
+      result = result.filter((opt) => !opt.group || opt.group === activeTab);
+    }
+
+    // Filter by search term
+    if (appliedFilter) {
+      result = result.filter((opt) =>
+        opt.label.toLowerCase().includes(appliedFilter.toLowerCase())
+      );
+    }
+
+    return result;
+  }, [options, tabs, activeTab, appliedFilter]);
 
   return (
     <Popover
@@ -60,13 +103,13 @@ export function Combobox({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-40 justify-between font-normal",
+            "w-full justify-between font-normal",
             disabled &&
-              "cursor-not-allowed opacity-50 hover:bg-background hover:text-foreground", // Override pointer-events-none implicitly if needed, or just rely on the fact that we passed disabled prop
+              "cursor-not-allowed opacity-50 hover:bg-background hover:text-foreground",
             className
           )}
           disabled={disabled}
-          style={disabled ? { pointerEvents: "auto" } : undefined} // Force pointer events to allow cursor change
+          style={disabled ? { pointerEvents: "auto" } : undefined}
         >
           <span className="truncate">
             {selectedOption ? selectedOption.label : placeholder}
@@ -74,13 +117,75 @@ export function Combobox({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-52 p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command shouldFilter={false}>
+          {/* Tabs */}
+          {tabs && tabs.length > 0 && (
+            <div className="flex border-b">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setAppliedFilter("");
+                    setInputValue("");
+                  }}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors relative",
+                    activeTab === tab.id
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  {tab.icon}
+                  {tab.label}
+                  {activeTab === tab.id && (
+                    <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Search input - filters on Enter */}
+          <div
+            data-slot="command-input-wrapper"
+            className="flex h-9 items-center gap-2 border-b px-3"
+          >
+            <SearchIcon className="size-4 shrink-0 opacity-50" />
+            <input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  setAppliedFilter(inputValue);
+                }
+                if (e.key === "Escape") {
+                  setOpen(false);
+                }
+              }}
+              placeholder={searchPlaceholder}
+              className="placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            {appliedFilter && (
+              <button
+                type="button"
+                onClick={() => {
+                  setInputValue("");
+                  setAppliedFilter("");
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground shrink-0 px-1"
+              >
+                Clear
+              </button>
+            )}
+          </div>
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => (
+              {filteredOptions.map((option) => (
                 <CommandItem
                   key={option.value}
                   value={option.label}
@@ -90,14 +195,19 @@ export function Combobox({
                   }}
                   className="cursor-pointer"
                 >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4 shrink-0",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="truncate flex-1">{option.label}</span>
+                    {option.rightElement && (
+                      <div className="ml-auto pl-2 shrink-0 flex items-center">
+                        {option.rightElement}
+                      </div>
                     )}
-                  />
-                  {option.label}
-                </CommandItem>
+                  </CommandItem>
               ))}
             </CommandGroup>
           </CommandList>

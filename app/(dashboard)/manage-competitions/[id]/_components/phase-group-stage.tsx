@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { DummyPlayer, MockQuiz } from "@/types/competition";
 import {
   Plus, Trash2, Users, UserPlus, BookOpen, Trophy, Clock,
-  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit, Gamepad2, Save
+  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit, Gamepad2, Save, ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -101,10 +102,7 @@ export function PhaseGroupStage({
   const [detailDialog, setDetailDialog] = useState<LocalGroup | null>(null);
   const [detailSearch, setDetailSearch] = useState("");
   const [assignDialog, setAssignDialog] = useState<LocalGroup | null>(null);
-  const [quizDialog, setQuizDialog] = useState<LocalGroup | null>(null);
-  const [quizSearch, setQuizSearch] = useState("");
-  const [gameDialog, setGameDialog] = useState<LocalGroup | null>(null);
-  const [gameSearch, setGameSearch] = useState("");
+  const [roundsDialog, setRoundsDialog] = useState<{ group: LocalGroup, rounds: { quizId: string, gameId: string }[] } | null>(null);
   const [assignSearch, setAssignSearch] = useState("");
   const [assignSelected, setAssignSelected] = useState<string[]>([]);
   const [advanceSelected, setAdvanceSelected] = useState<Record<string, string[]>>({});
@@ -204,45 +202,32 @@ export function PhaseGroupStage({
     setAssignDialog(null);
   };
 
-  const handleAssignQuiz = (groupId: string, quizId: string) => {
-    onGroupsChange(
-      groups.map((g) => {
-        if (g.id !== groupId) return g;
-        const has = g.quizIds.includes(quizId);
-        const updatedGroup = {
-          ...g,
-          quizIds: has
-            ? g.quizIds.filter((q) => q !== quizId)
-            : [...g.quizIds, quizId],
-        };
-        
-        // Sync local dialog state
-        if (quizDialog?.id === groupId) {
-          setQuizDialog(updatedGroup);
-        }
-        
-        return updatedGroup;
-      })
-    );
+  const openRoundsDialog = (group: LocalGroup) => {
+    const length = Math.max(group.quizIds.length, group.gameIds.length, 1);
+    const rounds = Array.from({ length }).map((_, i) => ({
+      quizId: group.quizIds[i] || "",
+      gameId: group.gameIds[i] || ""
+    }));
+    setRoundsDialog({ group, rounds });
   };
 
-  const handleAssignGame = (groupId: string, gameName: string) => {
-    onGroupsChange(
-      groups.map((g) => {
-        if (g.id !== groupId) return g;
-        const has = g.gameIds.includes(gameName);
-        const updatedGroup = {
-          ...g,
-          gameIds: has
-            ? g.gameIds.filter((gm) => gm !== gameName)
-            : [...g.gameIds, gameName],
-        };
-        if (gameDialog?.id === groupId) {
-          setGameDialog(updatedGroup);
-        }
-        return updatedGroup;
-      })
+  const handleSaveRounds = () => {
+    if (!roundsDialog) return;
+    
+    let newQuizIds = roundsDialog.rounds.map(r => r.quizId);
+    let newGameIds = roundsDialog.rounds.map(r => r.gameId);
+    
+    while(newQuizIds.length > 0 && newQuizIds[newQuizIds.length - 1] === "" && newGameIds[newGameIds.length - 1] === "") {
+        newQuizIds.pop();
+        newGameIds.pop();
+    }
+
+    const newGroups = groups.map((g) =>
+      g.id === roundsDialog.group.id ? { ...g, quizIds: newQuizIds, gameIds: newGameIds } : g
     );
+    onGroupsChange(newGroups);
+    setRoundsDialog(null);
+    toast.success("Rounds configured successfully");
   };
 
   const toggleAdvance = (groupId: string, playerId: string) => {
@@ -421,15 +406,9 @@ export function PhaseGroupStage({
                   </div>
                   <div className="flex items-center gap-2">
                     {group.stage !== "Champion" && (
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                        onClick={(e) => { e.stopPropagation(); setQuizDialog(group); }}>
-                        <BookOpen className="h-3 w-3" /> {t("competition.assign_quiz")}
-                      </Button>
-                    )}
-                    {group.stage !== "Champion" && (
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                        onClick={(e) => { e.stopPropagation(); setGameDialog(group); }}>
-                        <Gamepad2 className="h-3 w-3" /> {t("competition.assign_game") || "Assign Game"}
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 font-medium bg-indigo-50/50 hover:bg-indigo-100/50 text-indigo-700 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
+                        onClick={(e) => { e.stopPropagation(); openRoundsDialog(group); }}>
+                        <BookOpen className="h-3 w-3" /> Assign Quiz
                       </Button>
                     )}
                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
@@ -507,7 +486,7 @@ export function PhaseGroupStage({
                               })}
                             </div>
                             <div className="p-2 border-t bg-muted/10">
-                              <Button size="sm" variant="ghost" className="w-full text-xs h-8" onClick={() => { setDetailDialog(null); setTimeout(() => setQuizDialog(group), 150); }}>
+                              <Button size="sm" variant="ghost" className="w-full text-xs h-8" onClick={() => { setDetailDialog(null); setTimeout(() => openRoundsDialog(group), 150); }}>
                                 {t("competition.manage") || "Manage"} <ArrowUpRight className="ml-1 h-3 w-3" />
                               </Button>
                             </div>
@@ -544,7 +523,7 @@ export function PhaseGroupStage({
                               })}
                             </div>
                             <div className="p-2 border-t bg-violet-500/5">
-                              <Button size="sm" variant="ghost" className="w-full text-xs h-8 text-violet-600 hover:text-violet-700 hover:bg-violet-500/10" onClick={() => { setDetailDialog(null); setTimeout(() => setGameDialog(group), 150); }}>
+                              <Button size="sm" variant="ghost" className="w-full text-xs h-8 text-violet-600 hover:text-violet-700 hover:bg-violet-500/10" onClick={() => { setDetailDialog(null); setTimeout(() => openRoundsDialog(group), 150); }}>
                                 {t("competition.manage") || "Manage"} <ArrowUpRight className="ml-1 h-3 w-3" />
                               </Button>
                             </div>
@@ -816,166 +795,107 @@ export function PhaseGroupStage({
         </DialogContent>
       </Dialog>
 
-      {/* Assign Quiz Dialog */}
-      <Dialog open={!!quizDialog} onOpenChange={(open) => { if (!open) { setQuizDialog(null); setQuizSearch(""); } }}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh]">
+      {/* Manage Rounds Dialog */}
+      <Dialog open={!!roundsDialog} onOpenChange={(open) => { if (!open) setRoundsDialog(null); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 max-w-full overflow-hidden">
               <BookOpen className="h-5 w-5 shrink-0" />
-              <span className="truncate">{t("competition.assign_quiz")} — {quizDialog?.name}</span>
+              <span className="truncate">{t("competition.assign_quiz") || "Assign Quiz & Game"} — {roundsDialog?.group.name}</span>
             </DialogTitle>
+            <p className="text-sm text-muted-foreground">{t("competition.configure_rounds_desc") || "Configure quizzes and games for each round"}</p>
           </DialogHeader>
-          <div className="mb-2 w-full min-w-0">
-            <SearchInput
-              placeholder={t("quiz.search") || "Search quiz..."}
-              value={quizSearch}
-              onSearch={(val) => setQuizSearch(val)}
-            />
-          </div>
-          <Tabs defaultValue="public" className="w-full min-w-0">
-            <TabsList className="grid w-full min-w-0 grid-cols-2 mb-4">
-              <TabsTrigger value="public">{t("competition.public_quiz") || "Public Quiz"}</TabsTrigger>
-              <TabsTrigger value="my">{t("competition.my_quiz") || "My Quiz"}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="public" className="space-y-2 mt-0 overflow-y-auto pr-1 max-h-[45vh] w-full min-w-0">
-              {(() => {
-                const filteredQuizzes = quizzes.filter(q => q.isPublic && q.title.toLowerCase().includes(quizSearch.toLowerCase()));
-                if (filteredQuizzes.length === 0) {
-                  return (
-                    <div className="text-center py-6 border rounded-lg border-dashed">
-                      <p className="text-sm text-muted-foreground">{t("competition.no_quizzes_found") || "No quizzes found."}</p>
-                    </div>
-                  );
-                }
-                return filteredQuizzes.map((quiz) => {
-                  const isAssigned = quizDialog?.quizIds.includes(quiz.id);
-                  return (
-                    <div key={quiz.id}
-                      onClick={() => quizDialog && handleAssignQuiz(quizDialog.id, quiz.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          if (quizDialog) handleAssignQuiz(quizDialog.id, quiz.id);
-                        }
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 mt-2">
+            {roundsDialog?.rounds.map((round, idx) => (
+              <div key={idx} className="flex flex-col gap-3 p-4 border rounded-lg bg-card/50 relative">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-muted-foreground">{t("competition.round") || "Round"} {idx + 1}</span>
+                  {roundsDialog.rounds.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        const newRounds = [...roundsDialog.rounds];
+                        newRounds.splice(idx, 1);
+                        setRoundsDialog({ ...roundsDialog, rounds: newRounds });
                       }}
-                      className={`w-full max-w-full overflow-hidden flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
-                        isAssigned ? "bg-primary/10 border-primary/30" : "hover:bg-muted/50"
-                      }`}>
-                      <div className="flex items-center gap-3 w-full min-w-0">
-                        <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 shrink-0 bg-background border-muted-foreground/40" />
-                        <div className="text-left flex-1 min-w-0 pr-2">
-                          <p className="font-medium truncate" title={quiz.title}>{quiz.title}</p>
-                          <p className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </TabsContent>
-            <TabsContent value="my" className="space-y-2 mt-0 overflow-y-auto pr-1 max-h-[45vh] w-full min-w-0">
-              {(() => {
-                const filteredQuizzes = [...quizzes].reverse().filter(q => q.creatorId === currentUserId && q.title.toLowerCase().includes(quizSearch.toLowerCase()));
-                if (filteredQuizzes.length === 0) {
-                  return (
-                    <div className="text-center py-6 border rounded-lg border-dashed">
-                      <p className="text-sm text-muted-foreground">{t("competition.no_quizzes_found") || "No quizzes found."}</p>
-                    </div>
-                  );
-                }
-                return filteredQuizzes.map((quiz) => {
-                  const isAssigned = quizDialog?.quizIds.includes(quiz.id);
-                  return (
-                    <div key={quiz.id}
-                      onClick={() => quizDialog && handleAssignQuiz(quizDialog.id, quiz.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          if (quizDialog) handleAssignQuiz(quizDialog.id, quiz.id);
-                        }
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 min-w-0 flex flex-col">
+                    <label className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
+                      <BookOpen className="h-3.5 w-3.5" /> {t("competition.select_quiz") || "Select Quiz"}
+                    </label>
+                    <Combobox
+                      tabs={[
+                        { id: "public", label: "Public Quiz", icon: <BookOpen className="h-3 w-3" /> },
+                        { id: "my", label: "My Quiz", icon: <Edit className="h-3 w-3" /> },
+                      ]}
+                      options={[{ value: "none", label: "None" }, ...quizzes
+                        .filter(q => q.isPublic || q.creatorId === currentUserId)
+                        .map(q => ({
+                          value: q.id, 
+                          label: q.title,
+                          group: q.creatorId === currentUserId ? "my" : "public",
+                        }))
+                      ]}
+                      value={round.quizId || "none"}
+                      onValueChange={(val) => {
+                        const newRounds = [...roundsDialog.rounds];
+                        newRounds[idx].quizId = val === "none" ? "" : val;
+                        setRoundsDialog({ ...roundsDialog, rounds: newRounds });
                       }}
-                      className={`w-full max-w-full overflow-hidden flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
-                        isAssigned ? "bg-primary/10 border-primary/30" : "hover:bg-muted/50"
-                      }`}>
-                      <div className="flex items-center gap-3 w-full min-w-0">
-                        <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 shrink-0 bg-background border-muted-foreground/40" />
-                        <div className="text-left flex-1 min-w-0 pr-2">
-                          <p className="font-medium truncate" title={quiz.title}>{quiz.title}</p>
-                          <p className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
+                      placeholder="Select quiz..."
+                      searchPlaceholder="Search quiz..."
+                      emptyText={t("competition.no_quizzes_found") || "No quizzes found."}
+                      className="w-full h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5 min-w-0 flex flex-col">
+                    <label className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
+                      <Gamepad2 className="h-3.5 w-3.5" /> {t("competition.select_game") || "Select Game"}
+                    </label>
+                    <Combobox
+                      options={[{ value: "none", label: "None" }, ...games.map(g => ({ value: g.name, label: g.name }))]}
+                      value={round.gameId || "none"}
+                      onValueChange={(val) => {
+                        const newRounds = [...roundsDialog.rounds];
+                        newRounds[idx].gameId = val === "none" ? "" : val;
+                        setRoundsDialog({ ...roundsDialog, rounds: newRounds });
+                      }}
+                      placeholder="Select game..."
+                      searchPlaceholder="Search game..."
+                      emptyText={t("competition.no_games_found") || "No games found."}
+                      className="w-full h-10 text-sm capitalize"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-dashed gap-2"
+              onClick={() => {
+                setRoundsDialog({
+                  ...roundsDialog!,
+                  rounds: [...roundsDialog!.rounds, { quizId: "", gameId: "" }]
                 });
-              })()}
-            </TabsContent>
-          </Tabs>
-          <DialogFooter className="w-full min-w-0">
-            <Button variant="outline" onClick={() => setQuizDialog(null)}>{t("action.close")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Assign Game Dialog */}
-      <Dialog open={!!gameDialog} onOpenChange={(open) => { if (!open) { setGameDialog(null); setGameSearch(""); } }}>
-        <DialogContent className="sm:max-w-[400px] max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 max-w-full overflow-hidden">
-              <Gamepad2 className="h-5 w-5 shrink-0" />
-              <span className="truncate">{t("competition.assign_game") || "Assign Game"} — {gameDialog?.name}</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="mb-2">
-            <SearchInput
-              placeholder={t("competition.search_game") || "Search game..."}
-              value={gameSearch}
-              onSearch={(val) => setGameSearch(val)}
-            />
+              }}
+            >
+              <Plus className="h-4 w-4" /> {t("competition.add_round") || "Add Round"} ({roundsDialog?.rounds.length! + 1})
+            </Button>
           </div>
-          <div className="space-y-2 max-h-72 overflow-y-auto">
-            {(() => {
-              const filteredGames = games.filter(g => g.name.toLowerCase().includes(gameSearch.toLowerCase()));
-              if (filteredGames.length === 0) {
-                return (
-                  <div className="text-center py-6 border rounded-lg border-dashed">
-                    <p className="text-sm text-muted-foreground">{t("competition.no_games_found") || "No games found."}</p>
-                  </div>
-                );
-              }
-              return filteredGames.map((game) => {
-                const isAssigned = gameDialog?.gameIds.includes(game.name);
-                return (
-                  <div key={game.name}
-                    onClick={() => gameDialog && handleAssignGame(gameDialog.id, game.name)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        if (gameDialog) handleAssignGame(gameDialog.id, game.name);
-                      }
-                    }}
-                    className={`w-full max-w-full overflow-hidden flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
-                      isAssigned ? "bg-violet-500/10 border-violet-400/30" : "hover:bg-muted/50"
-                    }`}>
-                    <div className="flex items-center gap-3 w-full min-w-0">
-                      <Checkbox checked={!!isAssigned} disabled className="h-4 w-4 shrink-0 bg-background border-muted-foreground/40" />
-                      <div className="text-left flex-1 min-w-0 pr-2">
-                        <p className="font-medium capitalize truncate" title={game.name}>{game.name}</p>
-                        <p className="text-xs text-muted-foreground">{game.count.toLocaleString("id-ID")} sessions</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              });
-            })()}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGameDialog(null)}>{t("action.close") || "Close"}</Button>
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setRoundsDialog(null)}>{t("action.cancel") || "Cancel"}</Button>
+            <Button onClick={handleSaveRounds} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+              <Save className="h-4 w-4" /> {t("action.save") || "Save"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1106,8 +1026,7 @@ export function PhaseGroupStage({
             groups={groups} 
             quizzes={quizzes} 
             games={games} 
-            onManageQuiz={(g) => { setDetailDialog(null); setTimeout(() => setQuizDialog(g), 150); }} 
-            onManageGame={(g) => { setDetailDialog(null); setTimeout(() => setGameDialog(g), 150); }} 
+            onManageRounds={(g) => { setDetailDialog(null); setTimeout(() => openRoundsDialog(g), 150); }} 
           />
         </>
       )}

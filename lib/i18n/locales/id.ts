@@ -935,6 +935,8 @@ export const id: Record<string, string> = {
   "competition.my_quiz": "Kuis Saya",
   "competition.no_quizzes_found": "Kuis tidak ditemukan.",
   "competition.manage": "Kelola",
+  "competition.configure_rounds_desc": "Konfigurasikan kuis dan game untuk setiap babak",
+  "competition.select_game": "Pilih Game",
 
   // Un-advance Confirm Dialog
   "common.are_you_sure": "Apakah Anda yakin?",

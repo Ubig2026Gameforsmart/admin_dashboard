@@ -937,6 +937,8 @@ export const en: Record<string, string> = {
   "competition.my_quiz": "My Quiz",
   "competition.no_quizzes_found": "No quizzes found.",
   "competition.manage": "Manage",
+  "competition.configure_rounds_desc": "Configure quizzes and games for each round",
+  "competition.select_game": "Select Game",
 
   // Un-advance Confirm Dialog
   "common.are_you_sure": "Are you sure?",

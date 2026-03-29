@@ -21,8 +21,7 @@ interface LocalBracketViewProps {
   groups: LocalGroup[];
   quizzes?: MockQuiz[];
   games?: GameApp[];
-  onManageQuiz?: (group: LocalGroup) => void;
-  onManageGame?: (group: LocalGroup) => void;
+  onManageRounds?: (group: LocalGroup) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -32,7 +31,7 @@ function formatTime(seconds: number): string {
   return `${m}m ${s.toString().padStart(2, "0")}s`;
 }
 
-export function LocalBracketView({ groups, quizzes = [], games = [], onManageQuiz, onManageGame }: LocalBracketViewProps) {
+export function LocalBracketView({ groups, quizzes = [], games = [], onManageRounds }: LocalBracketViewProps) {
   const { t } = useTranslation();
   const [selectedGroup, setSelectedGroup] = useState<LocalGroup | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -328,9 +327,9 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageQui
                             );
                           })}
                         </div>
-                        {onManageQuiz && (
+                        {onManageRounds && (
                           <div className="p-2 border-t bg-muted/10">
-                            <Button size="sm" variant="ghost" className="w-full text-xs h-8" onClick={() => { setSelectedGroup(null); setTimeout(() => onManageQuiz(selectedGroup), 150); }}>
+                            <Button size="sm" variant="ghost" className="w-full text-xs h-8" onClick={() => { setSelectedGroup(null); setTimeout(() => onManageRounds(selectedGroup), 150); }}>
                               {t("competition.manage") || "Manage"} <ArrowUpRight className="ml-1 h-3 w-3" />
                             </Button>
                           </div>
@@ -367,9 +366,9 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageQui
                             );
                           })}
                         </div>
-                        {onManageGame && (
+                        {onManageRounds && (
                           <div className="p-2 border-t bg-violet-500/5">
-                            <Button size="sm" variant="ghost" className="w-full text-xs h-8 text-violet-600 hover:text-violet-700 hover:bg-violet-500/10" onClick={() => { setSelectedGroup(null); setTimeout(() => onManageGame(selectedGroup), 150); }}>
+                            <Button size="sm" variant="ghost" className="w-full text-xs h-8 text-violet-600 hover:text-violet-700 hover:bg-violet-500/10" onClick={() => { setSelectedGroup(null); setTimeout(() => onManageRounds(selectedGroup), 150); }}>
                               {t("competition.manage") || "Manage"} <ArrowUpRight className="ml-1 h-3 w-3" />
                             </Button>
                           </div>
