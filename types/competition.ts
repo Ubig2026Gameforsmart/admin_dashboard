@@ -78,6 +78,7 @@ export interface DummyPlayer {
   paid: boolean;
   registeredAt: string;
   isFinalist?: boolean;
+  isPresent?: boolean;
   category?: string;
 }
 

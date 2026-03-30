@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -56,6 +56,8 @@ export default function CompetitionDetailPage() {
   const [isSavingGroups, setIsSavingGroups] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
   const [rulesExpanded, setRulesExpanded] = useState(false);
+  const [isGroupsDirty, setIsGroupsDirty] = useState(false);
+  const savedGroupsSnapshot = useRef<string>("");
 
   // Wizard phase state
   const [activePhase, setActivePhase] = useState<CompetitionPhase>("registration");
@@ -168,6 +170,7 @@ export default function CompetitionDetailPage() {
             paid: p.is_paid || false,
             registeredAt: p.registered_at,
             isFinalist: p.is_finalist || false,
+            isPresent: p.is_present || false,
             category: p.category || undefined,
           };
         });
@@ -203,6 +206,7 @@ export default function CompetitionDetailPage() {
             })
           }));
           setLocalGroups(loadedGroups);
+          savedGroupsSnapshot.current = JSON.stringify(loadedGroups);
         }
       } else {
         console.error("Error fetching participants:", pError);
@@ -266,6 +270,13 @@ export default function CompetitionDetailPage() {
 
   }, [compId, supabase, router]);
 
+  // Track unsaved changes
+  useEffect(() => {
+    if (!savedGroupsSnapshot.current) return;
+    const current = JSON.stringify(localGroups);
+    setIsGroupsDirty(current !== savedGroupsSnapshot.current);
+  }, [localGroups]);
+
   // --- Database Sync for Groups ---
   const handleSaveGroupsToDb = async () => {
     setIsSavingGroups(true);
@@ -312,7 +323,36 @@ export default function CompetitionDetailPage() {
           if (em) throw em;
         }
       }
+
+      // 3. Update winners if there's a Champion stage group
+      const championGroups = localGroups.filter(g => g.stage === "Champion" || g.name.toLowerCase().includes("champion") || g.name.toLowerCase().includes("juara"));
+      let winnersJson: any = {};
+      
+      if (championGroups.length > 0) {
+        // Collect all members from champion groups
+        const allChampionMembers = championGroups.flatMap(g => g.members);
+        
+        // Sort: score desc, time asc
+        const ranked = [...allChampionMembers].sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          return a.timeSeconds - b.timeSeconds;
+        });
+
+        if (ranked[0]) winnersJson["1st"] = { userId: ranked[0].playerId, name: ranked[0].playerName, score: ranked[0].score, time: ranked[0].timeSeconds };
+        if (ranked[1]) winnersJson["2nd"] = { userId: ranked[1].playerId, name: ranked[1].playerName, score: ranked[1].score, time: ranked[1].timeSeconds };
+        if (ranked[2]) winnersJson["3rd"] = { userId: ranked[2].playerId, name: ranked[2].playerName, score: ranked[2].score, time: ranked[2].timeSeconds };
+      }
+      
+      const { error: winnerError } = await supabase
+        .from("competitions")
+        .update({ winners: winnersJson })
+        .eq("id", compId);
+      
+      if (winnerError) throw winnerError;
+
       toast.success(t("competition.groups_saved") || "Group Configuration Saved Successfully!");
+      savedGroupsSnapshot.current = JSON.stringify(localGroups);
+      setIsGroupsDirty(false);
     } catch (e: any) {
       toast.error("Failed to save config: " + e.message);
     } finally {
@@ -321,20 +361,52 @@ export default function CompetitionDetailPage() {
   };
 
   // --- Player Management ---
-  const handleToggleFinalist = (playerId: string) => {
+  const handleToggleFinalist = async (playerId: string) => {
+    // Optimistic update
+    const targetPlayer = players.find(p => p.id === playerId);
+    const newStatus = targetPlayer ? !targetPlayer.isFinalist : true;
+    
     setPlayers((prev: DummyPlayer[]) =>
       prev.map((p: DummyPlayer) =>
-        p.id === playerId ? { ...p, isFinalist: !p.isFinalist } : p
+        p.id === playerId ? { ...p, isFinalist: newStatus } : p
       )
     );
+
+    // Save to DB
+    const { error } = await supabase
+      .from("competition_participants")
+      .update({ is_finalist: newStatus })
+      .eq("id", playerId);
+      
+    if (error) {
+      toast.error("Failed to update finalist status: " + error.message);
+      // Revert optimistic update
+      setPlayers((prev: DummyPlayer[]) =>
+        prev.map((p: DummyPlayer) =>
+          p.id === playerId ? { ...p, isFinalist: !newStatus } : p
+        )
+      );
+    }
   };
 
-  const handleBatchFinalist = (playerIds: string[]) => {
+  const handleBatchFinalist = async (playerIds: string[]) => {
+    // Optimistic update
     setPlayers((prev: DummyPlayer[]) =>
       prev.map((p: DummyPlayer) =>
         playerIds.includes(p.id) ? { ...p, isFinalist: true } : p
       )
     );
+
+    // Save to DB
+    const { error } = await supabase
+      .from("competition_participants")
+      .update({ is_finalist: true })
+      .in("id", playerIds);
+      
+    if (error) {
+      toast.error("Failed to update finalist status for selected players");
+      // Could revert, but for batch it's complicated, page reload helps.
+    }
   };
 
   // --- Status config ---
@@ -642,6 +714,7 @@ export default function CompetitionDetailPage() {
             onSave={handleSaveGroupsToDb}
             isSaving={isSavingGroups}
             currentUserId={currentUserId}
+            isDirty={isGroupsDirty}
           />
         </TabsContent>
 

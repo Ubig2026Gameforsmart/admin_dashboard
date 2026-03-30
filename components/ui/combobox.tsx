@@ -117,8 +117,13 @@ export function Combobox({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command shouldFilter={false}>
+      <PopoverContent 
+        className="w-[var(--radix-popover-trigger-width)] p-0 flex flex-col" 
+        style={{ maxHeight: "calc(var(--radix-popover-content-available-height) - 16px)" }}
+        align="start"
+        sideOffset={8}
+      >
+        <Command shouldFilter={false} className="flex-1 flex flex-col overflow-hidden max-h-full">
           {/* Tabs */}
           {tabs && tabs.length > 0 && (
             <div className="flex border-b">
@@ -182,7 +187,7 @@ export function Combobox({
               </button>
             )}
           </div>
-          <CommandList>
+          <CommandList className="flex-1 overflow-y-auto min-h-0 min-w-0 max-h-[300px]">
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
               {filteredOptions.map((option) => (

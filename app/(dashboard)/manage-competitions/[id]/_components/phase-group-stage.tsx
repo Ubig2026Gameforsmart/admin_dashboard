@@ -58,6 +58,7 @@ interface PhaseGroupStageProps {
   onSave?: () => void;
   isSaving?: boolean;
   currentUserId?: string | null;
+  isDirty?: boolean;
 }
 
 export interface LocalGroup {
@@ -94,6 +95,7 @@ export function PhaseGroupStage({
   onSave,
   isSaving,
   currentUserId,
+  isDirty,
 }: PhaseGroupStageProps) {
   const { t } = useTranslation();
   const [newGroupName, setNewGroupName] = useState("");
@@ -113,6 +115,14 @@ export function PhaseGroupStage({
   const [editGroupName, setEditGroupName] = useState("");
   const [editGroupStage, setEditGroupStage] = useState("");
   const [editGroupSources, setEditGroupSources] = useState<string[]>([]);
+
+  // Remove confirmation state
+  const [removeConfirm, setRemoveConfirm] = useState<{
+    type: "member" | "quiz" | "game";
+    groupId: string;
+    itemId: string;
+    label: string;
+  } | null>(null);
 
   // All assigned player IDs across all groups
   const allAssignedIds = groups.flatMap((g) => g.members.map((m) => m.playerId));
@@ -348,14 +358,24 @@ export function PhaseGroupStage({
           </Button>
 
           {onSave && (
-            <Button onClick={onSave} disabled={isSaving} className="gap-1.5 h-9 px-4 shrink-0 transition-all">
-              {isSaving ? (
-                <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-              ) : (
-                <Save className="h-4 w-4" />
+            <div className="flex items-center gap-2 shrink-0">
+              {isDirty && !isSaving && (
+                <span className="text-xs text-amber-500 dark:text-amber-400 animate-pulse font-medium hidden sm:inline">
+                  ● {t("competition.unsaved_changes") || "Unsaved changes"}
+                </span>
               )}
-              Save
-            </Button>
+              <Button onClick={onSave} disabled={isSaving} className={`gap-1.5 h-9 px-4 shrink-0 transition-all relative ${isDirty && !isSaving ? 'ring-2 ring-amber-500/50 ring-offset-1 ring-offset-background' : ''}`}>
+                {isSaving ? (
+                  <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                {t("action.save") || "Save"}
+                {isDirty && !isSaving && (
+                  <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+                )}
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -478,9 +498,28 @@ export function PhaseGroupStage({
                               {group.quizIds.map(qId => {
                                 const quiz = quizzes.find(q => q.id === qId);
                                 return (
-                                  <div key={qId} className="flex flex-col py-1.5 px-2 hover:bg-muted/50 rounded-md transition-colors">
-                                    <span className="text-sm font-medium leading-tight truncate" title={quiz?.title || qId}>{quiz?.title || qId}</span>
-                                    {quiz && <span className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")}</span>}
+                                  <div key={qId} className="flex items-center gap-2 py-1.5 px-2 hover:bg-muted/50 rounded-md transition-colors group/quiz-item">
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                      <span className="text-sm font-medium leading-tight truncate" title={quiz?.title || qId}>{quiz?.title || qId}</span>
+                                      {quiz && <span className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")}</span>}
+                                    </div>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-5 w-5 shrink-0 opacity-0 group-hover/quiz-item:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted"
+                                      title="Remove quiz"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setRemoveConfirm({
+                                          type: "quiz",
+                                          groupId: group.id,
+                                          itemId: qId,
+                                          label: quiz?.title || qId,
+                                        });
+                                      }}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
                                   </div>
                                 );
                               })}
@@ -515,9 +554,28 @@ export function PhaseGroupStage({
                               {group.gameIds.map(gId => {
                                 const game = games.find(g => g.name === gId);
                                 return (
-                                  <div key={gId} className="flex flex-col py-1.5 px-2 hover:bg-muted/50 rounded-md transition-colors">
-                                    <span className="text-sm font-medium leading-tight truncate capitalize" title={game?.name || gId}>{game?.name || gId}</span>
-                                    {game && <span className="text-xs text-muted-foreground">{game.count.toLocaleString("id-ID")} sessions</span>}
+                                  <div key={gId} className="flex items-center gap-2 py-1.5 px-2 hover:bg-muted/50 rounded-md transition-colors group/game-item">
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                      <span className="text-sm font-medium leading-tight truncate capitalize" title={game?.name || gId}>{game?.name || gId}</span>
+                                      {game && <span className="text-xs text-muted-foreground">{game.count.toLocaleString("id-ID")} sessions</span>}
+                                    </div>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-5 w-5 shrink-0 opacity-0 group-hover/game-item:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted"
+                                      title="Remove game"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setRemoveConfirm({
+                                          type: "game",
+                                          groupId: group.id,
+                                          itemId: gId,
+                                          label: game?.name || gId,
+                                        });
+                                      }}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
                                   </div>
                                 );
                               })}
@@ -533,13 +591,15 @@ export function PhaseGroupStage({
                     </div>
                   )}
                 </div>
-                  <div className="w-56 shrink-0 mt-0">
-                    <SearchInput
-                      placeholder={t("comp_detail.search_player") || "Search player..."}
-                      value={detailSearch}
-                      onSearch={setDetailSearch}
-                      className="w-full h-8 text-xs"
-                    />
+                  <div className="flex items-center gap-2 shrink-0 mt-0">
+                    <div className="w-56">
+                      <SearchInput
+                        placeholder={t("comp_detail.search_player") || "Search player..."}
+                        value={detailSearch}
+                        onSearch={setDetailSearch}
+                        className="w-full h-8 text-xs"
+                      />
+                    </div>
                   </div>
                 </DialogHeader>
                 <div className="mt-3 flex flex-col gap-3">
@@ -555,7 +615,7 @@ export function PhaseGroupStage({
 
                     return (
                     <div className="border rounded-md overflow-hidden">
-                      <div className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px]"} gap-2 px-4 py-2 items-center text-[11px] font-medium text-muted-foreground border-b bg-muted/30`}>
+                      <div className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px_28px]"} gap-2 px-4 py-2 items-center text-[11px] font-medium text-muted-foreground border-b bg-muted/30`}>
                         {group.stage === "Champion" ? <span className="text-center">#</span> : (
                           <div className="flex items-center">
                             <Checkbox 
@@ -584,12 +644,13 @@ export function PhaseGroupStage({
                         <span className="text-center">{t("comp_detail.table_avg") || "Score"}</span>
                         <span className="text-center">{t("competition.time") || "Time"}</span>
                         <span />
+                        {group.stage !== "Champion" && <span />}
                       </div>
                       <div className="max-h-[50vh] overflow-y-auto w-full">
                         {visibleMembers
                           .map((member, idx) => (
                             <div key={member.playerId}
-                              className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px]"} gap-2 items-center px-4 py-2.5 text-sm border-b last:border-b-0 transition-colors ${
+                              className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px_28px]"} gap-2 items-center px-4 py-2.5 text-sm border-b last:border-b-0 transition-colors ${
                                 member.isAdvanced ? "bg-emerald-500/5" : groupAdvance.includes(member.playerId) ? "bg-primary/5" : ""
                               } ${group.stage !== "Champion" ? "cursor-pointer hover:bg-muted/40" : ""}`}
                               onClick={() => {
@@ -635,10 +696,15 @@ export function PhaseGroupStage({
                                   <AvatarFallback className="text-[11px] font-medium">{member.playerName.substring(0, 2).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col min-w-0">
-                                  <span className={`font-semibold text-sm truncate ${member.isAdvanced ? "text-emerald-600" : ""}`} title={member.playerName}>
-                                    {member.playerName}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground truncate" title={`@${member.playerName.toLowerCase().replace(/\\s+/g, '')}`}>
+                                  <div className={`flex items-center gap-1.5 min-w-0 ${member.isAdvanced ? "text-emerald-600" : ""}`}>
+                                    <span className="font-semibold text-sm truncate" title={member.playerName}>
+                                      {member.playerName}
+                                    </span>
+                                    {group.stage === "Final" && finalists.find(f => f.id === member.playerId)?.isPresent === false && (
+                                      <Badge variant="destructive" className="text-[8px] h-4 px-1.5 py-0 uppercase leading-none font-bold shrink-0">Absent</Badge>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-muted-foreground truncate" title={`@${member.playerName.toLowerCase().replace(/\s+/g, '')}`}>
                                     @{member.playerName.toLowerCase().replace(/\s+/g, '')}
                                   </span>
                                 </div>
@@ -656,6 +722,26 @@ export function PhaseGroupStage({
                                   </span>
                                 )}
                               </div>
+                              {group.stage !== "Champion" && (
+                                <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    title={t("action.remove") || "Remove from group"}
+                                    onClick={() => {
+                                      setRemoveConfirm({
+                                        type: "member",
+                                        groupId: group.id,
+                                        itemId: member.playerId,
+                                        label: member.playerName,
+                                      });
+                                    }}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           ))}
                       </div>
@@ -671,6 +757,37 @@ export function PhaseGroupStage({
                     );
                   })()}
                 </div>
+                {group.stage === "Final" && (
+                  <DialogFooter className="mt-4 border-t pt-3 sm:justify-between items-center w-full flex-row">
+                    <p className="text-[11px] text-muted-foreground mr-auto flex-1">
+                      Remove participants who have not checked in yet.
+                    </p>
+                    <Button 
+                      size="sm" 
+                      variant="destructive" 
+                      className="h-8 gap-1.5 shadow-sm text-xs bg-red-500 hover:bg-red-600 text-white shrink-0" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const absentIds = group.members.filter((m) => {
+                          const p = finalists.find((f) => f.id === m.playerId);
+                          return p?.isPresent === false;
+                        }).map(m => m.playerId);
+                        if (absentIds.length === 0) {
+                          toast.info("All participants have attended or group is empty!");
+                          return;
+                        }
+                        const updatedMembers = group.members.filter(m => !absentIds.includes(m.playerId));
+                        const newGroups = groups.map(g => 
+                          g.id === group.id ? { ...g, members: updatedMembers } : g
+                        );
+                        onGroupsChange(newGroups);
+                        setDetailDialog({ ...group, members: updatedMembers } as any);
+                        toast.success(`Removed ${absentIds.length} absent participant(s).`);
+                      }}>
+                      <Trash2 className="h-3 w-3" /> Cut Absent
+                    </Button>
+                  </DialogFooter>
+                )}
               </>
             );
           })()}
@@ -709,12 +826,13 @@ export function PhaseGroupStage({
                 }
 
                 const availableFiltered = availableRaw.filter(f => f.name.toLowerCase().includes(assignSearch.toLowerCase()));
-                const allSelected = availableFiltered.length > 0 && availableFiltered.every((f) => assignSelected.includes(f.id));
+                const assignableFiltered = availableFiltered; // Option 2: Allow all assignments
+                const allSelected = assignableFiltered.length > 0 && assignableFiltered.every((f) => assignSelected.includes(f.id));
                 
                 if (allSelected) {
                   setAssignSelected([]);
                 } else {
-                  setAssignSelected(availableFiltered.map((f) => f.id));
+                  setAssignSelected(assignableFiltered.map((f) => f.id));
                 }
               }}
             >
@@ -730,7 +848,8 @@ export function PhaseGroupStage({
                 }
 
                 const availableFiltered = availableRaw.filter(f => f.name.toLowerCase().includes(assignSearch.toLowerCase()));
-                const allSelected = availableFiltered.length > 0 && availableFiltered.every((f) => assignSelected.includes(f.id));
+                const assignableFiltered = availableFiltered; // Option 2
+                const allSelected = assignableFiltered.length > 0 && assignableFiltered.every((f) => assignSelected.includes(f.id));
                 return allSelected ? t("competition.deselect_all") : t("competition.select_all");
               })()}
             </Button>
@@ -757,9 +876,13 @@ export function PhaseGroupStage({
                 <>
                   {availableFiltered.map((player) => {
                     const isSel = assignSelected.includes(player.id);
+                    const showAbsent = assignDialog?.stage === "Final" && player.isPresent === false;
+                    
                     return (
                       <div key={player.id} 
-                        onClick={() => setAssignSelected((p) => isSel ? p.filter((x) => x !== player.id) : [...p, player.id])}
+                        onClick={() => {
+                          setAssignSelected((p) => isSel ? p.filter((x) => x !== player.id) : [...p, player.id])
+                        }}
                         role="button" 
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -768,11 +891,14 @@ export function PhaseGroupStage({
                             setAssignSelected((p) => isSel ? p.filter((x) => x !== player.id) : [...p, player.id]);
                           }
                         }}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left text-sm transition-colors cursor-pointer ${isSel ? "bg-primary/10 border border-primary/30" : "hover:bg-muted/50"}`}>
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left text-sm transition-colors ${isSel ? "bg-primary/10 border border-primary/30 cursor-pointer" : "hover:bg-muted/50 cursor-pointer"}`}>
                         <input type="checkbox" checked={isSel} readOnly className="h-4 w-4 accent-primary" />
                         <Avatar className="h-7 w-7"><AvatarFallback className="text-[10px]">{player.name.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
                         <div className="flex-1 flex flex-col min-w-0 pr-2">
-                          <span className="font-medium text-sm truncate" title={player.name}>{player.name}</span>
+                          <span className="font-medium text-sm truncate flex items-center gap-1" title={player.name}>
+                            {player.name}
+                            {showAbsent && <Badge variant="destructive" className="text-[8px] h-4 px-1 py-0 ml-1">Absent</Badge>}
+                          </span>
                           <span className="text-[10px] text-muted-foreground truncate" title={`@${player.name.toLowerCase().replace(/\s+/g, '')}`}>
                             @{player.name.toLowerCase().replace(/\s+/g, '')}
                           </span>
@@ -932,6 +1058,72 @@ export function PhaseGroupStage({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {t("action.revoke") || "Revoke"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove Confirmation Dialog */}
+      <AlertDialog
+        open={!!removeConfirm}
+        onOpenChange={(open) => {
+          if (!open) setRemoveConfirm(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will remove <span className="font-semibold text-foreground">{removeConfirm?.label}</span> from this group.
+              {removeConfirm?.type === "member" && " You can assign them again later if needed."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!removeConfirm) return;
+                const groupId = removeConfirm.groupId;
+                const group = groups.find((g) => g.id === groupId);
+                if (!group) return;
+
+                let newGroups = [...groups];
+                
+                if (removeConfirm.type === "member") {
+                  const updatedMembers = group.members.filter((m) => m.playerId !== removeConfirm.itemId);
+                  newGroups = groups.map((g) =>
+                    g.id === groupId ? { ...g, members: updatedMembers } : g
+                  );
+                  if (detailDialog?.id === groupId) {
+                    setDetailDialog({ ...group, members: updatedMembers } as any);
+                  }
+                  toast.success(`${removeConfirm.label} removed from group.`);
+                } else if (removeConfirm.type === "quiz") {
+                  const newQuizIds = group.quizIds.filter((id) => id !== removeConfirm.itemId);
+                  newGroups = groups.map((g) =>
+                    g.id === groupId ? { ...g, quizIds: newQuizIds } : g
+                  );
+                  if (detailDialog?.id === groupId) {
+                    setDetailDialog({ ...group, quizIds: newQuizIds } as any);
+                  }
+                  toast.success(`Quiz removed from group.`);
+                } else if (removeConfirm.type === "game") {
+                  const newGameIds = group.gameIds.filter((id) => id !== removeConfirm.itemId);
+                  newGroups = groups.map((g) =>
+                    g.id === groupId ? { ...g, gameIds: newGameIds } : g
+                  );
+                  if (detailDialog?.id === groupId) {
+                    setDetailDialog({ ...group, gameIds: newGameIds } as any);
+                  }
+                  toast.success(`Game removed from group.`);
+                }
+
+                onGroupsChange(newGroups);
+                setRemoveConfirm(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -25,7 +25,7 @@ interface LocalBracketViewProps {
 }
 
 function formatTime(seconds: number): string {
-  if (seconds === 0) return "—";
+  if (seconds === 0) return "\u2014";
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}m ${s.toString().padStart(2, "0")}s`;
@@ -72,23 +72,23 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageRou
   ];
 
   // Dynamic layout calculation
-  const COLUMN_WIDTH = 260; // Make cards slightly wider
-  const NODE_HEIGHT = 110;  // Slightly taller for breathing room
-  const Y_GAP = 50;         // Much wider vertical gap so nodes don't feel squashed
-  const PADDING_X = 40;     // Wider side padding to avoid edge hugging
+  const COLUMN_WIDTH = 260;
+  const NODE_HEIGHT = 110;
+  const Y_GAP = 50;
+  const PADDING_X = 40;
 
-  // Distribute horizontal gap evenly using available width, pushing columns to edges
-  const effectiveWidth = Math.max(containerWidth, 1000); // fallback min width
+  // Distribute horizontal gap evenly using available width
+  const effectiveWidth = Math.max(containerWidth, 1000);
   const availableWidthForGaps = effectiveWidth - (2 * PADDING_X) - (3 * COLUMN_WIDTH);
-  const X_GAP = Math.max(availableWidthForGaps / 2, 80); // Minimum 80px gap between columns
+  const X_GAP = Math.max(availableWidthForGaps / 2, 80);
 
   // Calculate height to comfortably fit the biggest column
   const maxRows = Math.max(semifinals.length, finals.length, champions.length, 1);
-  const startY = 60; // Start area below the column header
-  const minPaddingBottom = 60; 
+  const startY = 60;
+  const minPaddingBottom = 60;
   const requiredViewportHeight = maxRows * NODE_HEIGHT + Math.max(maxRows - 1, 0) * Y_GAP + startY + minPaddingBottom;
   
-  const svgHeight = Math.max(requiredViewportHeight, 450); // minimum height
+  const svgHeight = Math.max(requiredViewportHeight, 450);
   const svgWidth = Math.max((2 * PADDING_X) + (3 * COLUMN_WIDTH) + (2 * X_GAP), effectiveWidth);
 
   const nodeCenters: Record<string, { x: number, y: number, cx: number, cy: number }> = {};
@@ -107,10 +107,7 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageRou
     const xOffset = PADDING_X + colIdx * (COLUMN_WIDTH + X_GAP);
     const numItems = colData.data.length;
     
-    // Total height this column will take naturally
     const blockHeight = numItems * NODE_HEIGHT + Math.max(numItems - 1, 0) * Y_GAP;
-    
-    // Center this block vertically within the available space below header
     const availableHeight = svgHeight - startY;
     const blockStartY = startY + (availableHeight - blockHeight) / 2;
     
@@ -152,7 +149,7 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageRou
                 className="absolute top-0 bottom-0 border-r last:border-r-0 border-dashed border-border/40"
                 style={{ 
                    left: PADDING_X + colIdx * (COLUMN_WIDTH + X_GAP), 
-                   width: COLUMN_WIDTH + (colIdx === 2 ? 0 : X_GAP), // Span over the gap so borders look neat
+                   width: COLUMN_WIDTH + (colIdx === 2 ? 0 : X_GAP),
                    height: svgHeight
                 }}
              >
@@ -166,39 +163,71 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageRou
              </div>
            ))}
 
-           {/* SVG Lines - using absolute coordinates matching the HTML nodes */}
+           {/* SVG Lines - merged bracket connectors */}
            <svg className="absolute inset-0 pointer-events-none" width={svgWidth} height={svgHeight} style={{ zIndex: 0 }}>
-             {renderNodes.map(node => {
-                if (node.group.sources && node.group.sources.length > 0) {
-                   return node.group.sources.map(sourceId => {
-                      const sourceNode = nodeCenters[sourceId];
-                      if (!sourceNode) return null;
-                      
-                      // Draw line from right-edge of source, to left-edge of target
-                      const startX = sourceNode.x + COLUMN_WIDTH;
-                      const startY = sourceNode.cy;
-                      const endX = node.x;
-                      const endY = node.cy;
-                      
-                      // Orthogonal tournament lines
-                      const midX = startX + (endX - startX) / 2;
+             {(() => {
+               // Group all sources by their target node to draw proper merged bracket lines
+               const targetMap = new Map<string, { target: typeof renderNodes[0]; sourceNodes: (typeof renderNodes[0])[] }>();
+               
+               renderNodes.forEach(node => {
+                 if (node.group.sources && node.group.sources.length > 0) {
+                   const validSources = node.group.sources
+                     .map(sid => nodeCenters[sid])
+                     .filter(Boolean) as (typeof renderNodes[0])[];
+                   if (validSources.length > 0) {
+                     targetMap.set(node.group.id, { target: node, sourceNodes: validSources });
+                   }
+                 }
+               });
 
-                      return (
-                        <path 
-                          key={`${sourceId}-${node.group.id}`}
-                          d={`M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`}
-                          stroke="currentColor" 
-                          strokeWidth="2" 
-                          fill="none"
-                          className="text-primary/30"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      );
+               return Array.from(targetMap.entries()).map(([targetId, { target, sourceNodes }]) => {
+                 const endX = target.x;
+                 const endY = target.cy;
+                 const startXBase = sourceNodes[0].x + COLUMN_WIDTH;
+                 const midX = startXBase + (endX - startXBase) / 2;
+
+                 if (sourceNodes.length === 1) {
+                   // Single source: simple orthogonal line
+                   const sx = sourceNodes[0].x + COLUMN_WIDTH;
+                   const sy = sourceNodes[0].cy;
+                   return (
+                     <path 
+                       key={`line-${targetId}`}
+                       d={`M ${sx} ${sy} L ${midX} ${sy} L ${midX} ${endY} L ${endX} ${endY}`}
+                       stroke="currentColor" strokeWidth="2" fill="none"
+                       className="text-primary/30"
+                       strokeLinecap="round" strokeLinejoin="round"
+                     />
+                   );
+                 } else {
+                   // Multiple sources: merge into single bracket connector
+                   const sourceYs = sourceNodes.map(s => s.cy).sort((a, b) => a - b);
+                   const topY = sourceYs[0];
+                   const bottomY = sourceYs[sourceYs.length - 1];
+                   const mergeY = (topY + bottomY) / 2;
+
+                   const parts: string[] = [];
+                   // 1. Horizontal stub from each source to midX
+                   sourceNodes.forEach(s => {
+                     parts.push(`M ${s.x + COLUMN_WIDTH} ${s.cy} L ${midX} ${s.cy}`);
                    });
-                }
-                return null;
-             })}
+                   // 2. Vertical merge bar connecting only from top source to bottom source
+                   parts.push(`M ${midX} ${topY} L ${midX} ${bottomY}`);
+                   // 3. Horizontal connector from merge center to target
+                   parts.push(`M ${midX} ${mergeY} L ${endX} ${endY}`);
+
+                   return (
+                     <path 
+                       key={`line-${targetId}`}
+                       d={parts.join(' ')}
+                       stroke="currentColor" strokeWidth="2" fill="none"
+                       className="text-primary/30"
+                       strokeLinecap="round" strokeLinejoin="round"
+                     />
+                   );
+                 }
+               });
+             })()}
            </svg>
 
            {/* HTML Nodes - rendered securely above SVG lines */}
@@ -425,7 +454,7 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageRou
                             <span className={`font-semibold text-sm truncate ${member.isAdvanced ? "text-emerald-600" : ""}`} title={member.playerName}>
                               {member.playerName}
                             </span>
-                            <span className="text-xs text-muted-foreground truncate" title={`@${member.playerName.toLowerCase().replace(/\\s+/g, '')}`}>
+                            <span className="text-xs text-muted-foreground truncate" title={`@${member.playerName.toLowerCase().replace(/\s+/g, '')}`}>
                               @{member.playerName.toLowerCase().replace(/\s+/g, '')}
                             </span>
                           </div>
