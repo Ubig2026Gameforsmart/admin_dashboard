@@ -70,6 +70,8 @@ export const en: Record<string, string> = {
   "action.block": "Block",
   "action.unblock": "Unblock",
   "action.restore": "Restore",
+  "action.remove": "Remove",
+  "action.refresh": "Refresh",
   "action.expand_all": "Expand All",
   "action.collapse_all": "Collapse All",
 
@@ -856,6 +858,7 @@ export const en: Record<string, string> = {
   "receptionist.already_attended": "Already Attended",
   "receptionist.last_scan": "Last scan",
   "receptionist.point_camera": "Point camera at QR code",
+  "receptionist.absent": "Absent",
 
   // Edit Group
   "competition.edit_group": "Edit Group",
@@ -936,10 +939,19 @@ export const en: Record<string, string> = {
   "competition.public_quiz": "Public Quiz",
   "competition.my_quiz": "My Quiz",
   "competition.no_quizzes_found": "No quizzes found.",
+  "competition.cut_absent": "Cut Absent",
+  "competition.remove_round": "Remove round",
+  "competition.remove_quiz": "Remove quiz",
+  "competition.remove_game": "Remove game",
+  "competition.empty_round": "Empty round",
   "competition.manage": "Manage",
+  "competition.manage_rounds": "Manage Rounds",
+  "competition.assigned_rounds": "Assigned Rounds",
+  "competition.rounds": "Rounds",
   "competition.configure_rounds_desc": "Configure quizzes and games for each round",
   "competition.select_game": "Select Game",
   "competition.unsaved_changes": "Unsaved changes",
+  "competition.unsaved_changes_confirm": "You have unsaved changes. Refreshing will discard them. Continue?",
 
   // Un-advance Confirm Dialog
   "common.are_you_sure": "Are you sure?",

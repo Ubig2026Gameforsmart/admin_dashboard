@@ -70,6 +70,8 @@ export const id: Record<string, string> = {
   "action.block": "Blokir",
   "action.unblock": "Buka Blokir",
   "action.restore": "Pulihkan",
+  "action.remove": "Hapus",
+  "action.refresh": "Segarkan",
   "action.expand_all": "Buka Semua",
   "action.collapse_all": "Tutup Semua",
 
@@ -854,6 +856,7 @@ export const id: Record<string, string> = {
   "receptionist.already_attended": "Sudah Hadir",
   "receptionist.last_scan": "Scan terakhir",
   "receptionist.point_camera": "Arahkan kamera ke kode QR",
+  "receptionist.absent": "Absen",
 
   // Edit Group
   "competition.edit_group": "Edit Grup",
@@ -934,10 +937,19 @@ export const id: Record<string, string> = {
   "competition.public_quiz": "Kuis Publik",
   "competition.my_quiz": "Kuis Saya",
   "competition.no_quizzes_found": "Kuis tidak ditemukan.",
+  "competition.cut_absent": "Hapus Absen",
+  "competition.remove_round": "Hapus babak",
+  "competition.remove_quiz": "Hapus kuis",
+  "competition.remove_game": "Hapus game",
+  "competition.empty_round": "Babak kosong",
   "competition.manage": "Kelola",
+  "competition.manage_rounds": "Kelola Babak",
+  "competition.assigned_rounds": "Babak Ditetapkan",
+  "competition.rounds": "Babak",
   "competition.configure_rounds_desc": "Konfigurasikan kuis dan game untuk setiap babak",
   "competition.select_game": "Pilih Game",
   "competition.unsaved_changes": "Perubahan belum disimpan",
+  "competition.unsaved_changes_confirm": "Terdapat perubahan yang belum disimpan. Menyegarkan data akan menghilangkan perubahan tersebut. Lanjutkan?",
 
   // Un-advance Confirm Dialog
   "common.are_you_sure": "Apakah Anda yakin?",
