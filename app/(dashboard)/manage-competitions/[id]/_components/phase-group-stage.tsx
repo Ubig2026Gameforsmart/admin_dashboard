@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { DummyPlayer, MockQuiz } from "@/types/competition";
 import {
   Plus, Trash2, Users, UserPlus, BookOpen, Trophy, Clock,
-  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit, Gamepad2, Save, ArrowLeft
+  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit, Gamepad2, Save, ArrowLeft, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +59,8 @@ interface PhaseGroupStageProps {
   isSaving?: boolean;
   currentUserId?: string | null;
   isDirty?: boolean;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export interface LocalGroup {
@@ -96,6 +98,8 @@ export function PhaseGroupStage({
   isSaving,
   currentUserId,
   isDirty,
+  onRefresh,
+  isRefreshing,
 }: PhaseGroupStageProps) {
   const { t } = useTranslation();
   const [newGroupName, setNewGroupName] = useState("");
@@ -352,6 +356,19 @@ export function PhaseGroupStage({
         )}
 
         <div className="flex items-center gap-2 shrink-0 md:ml-auto">
+          {onRefresh && (
+            <Button 
+              onClick={onRefresh} 
+              variant="outline" 
+              size="icon"
+              className="h-9 w-9 shrink-0" 
+              title={t("action.refresh") || "Refresh Data"}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          )}
+
           <Button onClick={handleAddGroup} variant="secondary" className="gap-1.5 h-9 shrink-0">
             <Plus className="h-4 w-4" />
             {t("competition.add_group") || "Add Group"}
@@ -408,16 +425,14 @@ export function PhaseGroupStage({
                     <Badge variant="secondary" className="text-[10px] gap-1 h-5">
                       <Users className="h-3 w-3" /> {group.members.length}
                     </Badge>
-                    {group.quizIds.length > 0 && (
-                      <Badge variant="outline" className="text-[10px] h-5 gap-1">
-                        <BookOpen className="h-3 w-3" /> {group.quizIds.length} quiz
-                      </Badge>
-                    )}
-                    {group.gameIds.length > 0 && (
-                      <Badge variant="outline" className="text-[10px] h-5 gap-1 text-violet-600 border-violet-300 bg-violet-500/10">
-                        <Gamepad2 className="h-3 w-3" /> {group.gameIds.length} game
-                      </Badge>
-                    )}
+                    {(group.quizIds.length > 0 || group.gameIds.length > 0) && (() => {
+                      const rounds = Math.max(group.quizIds.length, group.gameIds.length);
+                      return (
+                        <Badge variant="outline" className="text-[10px] h-5 gap-1 text-primary border-primary/20 bg-primary/10">
+                          <Trophy className="h-3 w-3" /> {rounds} {rounds === 1 ? 'round' : 'rounds'}
+                        </Badge>
+                      );
+                    })()}
                     {advancedCount > 0 && (
                       <Badge variant="outline" className="text-[10px] h-5 gap-0.5 text-emerald-600 border-emerald-300 bg-emerald-500/10">
                         <ArrowUpRight className="h-3 w-3" /> {advancedCount}
@@ -436,6 +451,7 @@ export function PhaseGroupStage({
                       <UserPlus className="h-3 w-3" /> {t("competition.assign_finalist")}
                     </Button>
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      title={t("action.edit") || "Edit"}
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditGroup(group);
@@ -446,6 +462,7 @@ export function PhaseGroupStage({
                       <Edit className="h-3.5 w-3.5" />
                     </Button>
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
+                      title={t("action.delete") || "Delete"}
                       onClick={(e) => { e.stopPropagation(); handleDeleteGroup(group.id); }}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -475,121 +492,109 @@ export function PhaseGroupStage({
                       </Badge>
                     )}
                   </DialogTitle>
-                  {(group.quizIds.length > 0 || group.gameIds.length > 0) && (
+                  {(group.quizIds.length > 0 || group.gameIds.length > 0) && (() => {
+                    const totalRounds = Math.max(group.quizIds.length, group.gameIds.length);
+                    return (
                     <div className="flex items-center gap-2 pl-7 flex-wrap">
-                      {group.quizIds.length > 0 && (
-                        <Popover>
-                          <PopoverTrigger onClick={(e) => e.stopPropagation()}>
-                            <Badge 
-                              variant="secondary" 
-                              className="text-[10px] cursor-pointer hover:bg-muted-foreground/10 transition-colors"
-                            >
-                              <BookOpen className="h-3 w-3 mr-1" />
-                              {group.quizIds.length} {group.quizIds.length === 1 ? "Quiz" : "Quizzes"}
-                            </Badge>
-                          </PopoverTrigger>
-                          <PopoverContent align="start" className="w-[320px] p-0 shadow-xl border-muted">
-                            <div className="p-3 border-b bg-muted/20">
-                              <h4 className="font-semibold text-sm flex items-center gap-2">
-                                <BookOpen className="h-4 w-4 text-primary" /> {t("competition.assign_quiz") || "Assigned Quizzes"}
-                              </h4>
-                            </div>
-                            <div className="max-h-[250px] overflow-y-auto p-2">
-                              {group.quizIds.map(qId => {
-                                const quiz = quizzes.find(q => q.id === qId);
-                                return (
-                                  <div key={qId} className="flex items-center gap-2 py-1.5 px-2 hover:bg-muted/50 rounded-md transition-colors group/quiz-item">
-                                    <div className="flex flex-col min-w-0 flex-1">
-                                      <span className="text-sm font-medium leading-tight truncate" title={quiz?.title || qId}>{quiz?.title || qId}</span>
-                                      {quiz && <span className="text-xs text-muted-foreground">{quiz.questionCount} {t("competition.questions")}</span>}
-                                    </div>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-5 w-5 shrink-0 opacity-0 group-hover/quiz-item:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted"
-                                      title="Remove quiz"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setRemoveConfirm({
-                                          type: "quiz",
-                                          groupId: group.id,
-                                          itemId: qId,
-                                          label: quiz?.title || qId,
-                                        });
-                                      }}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
+                      <Popover>
+                        <PopoverTrigger onClick={(e) => e.stopPropagation()}>
+                          <Badge 
+                            variant="secondary" 
+                            className="text-[10px] cursor-pointer bg-primary/10 hover:bg-primary/20 text-primary border-primary/20 transition-colors px-2 py-0.5 gap-1.5"
+                          >
+                            <Trophy className="h-3 w-3" />
+                            {totalRounds} {totalRounds === 1 ? (t("competition.round") || "Round") : (t("competition.rounds") || "Rounds")}
+                          </Badge>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-[320px] p-0 shadow-xl border-muted">
+                          <div className="p-3 border-b bg-muted/20">
+                            <h4 className="font-semibold text-sm flex items-center gap-2 text-primary">
+                              <Trophy className="h-4 w-4" /> {t("competition.assigned_rounds") || "Assigned Rounds"}
+                            </h4>
+                          </div>
+                          <div className="max-h-[300px] overflow-y-auto p-2 space-y-2">
+                            {Array.from({ length: totalRounds }).map((_, i) => {
+                              const qId = group.quizIds[i];
+                              const gId = group.gameIds[i];
+                              const quiz = qId ? quizzes.find(q => q.id === qId) : null;
+                              const game = gId ? games.find(g => g.name === gId) : null;
+                              return (
+                                <div key={i} className="flex flex-col gap-1.5 p-2.5 border rounded-lg bg-card shadow-sm relative group/round">
+                                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex justify-between items-center">
+                                    <span>{t("competition.round") || "Round"} {i + 1}</span>
                                   </div>
-                                );
-                              })}
-                            </div>
-                            <div className="p-2 border-t bg-muted/10">
-                              <Button size="sm" variant="ghost" className="w-full text-xs h-8" onClick={() => { setDetailDialog(null); setTimeout(() => openRoundsDialog(group), 150); }}>
-                                {t("competition.manage") || "Manage"} <ArrowUpRight className="ml-1 h-3 w-3" />
-                              </Button>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                      
-                      {group.gameIds.length > 0 && (
-                        <Popover>
-                          <PopoverTrigger onClick={(e) => e.stopPropagation()}>
-                            <Badge 
-                              variant="secondary" 
-                              className="text-[10px] cursor-pointer text-violet-600 border-violet-300 bg-violet-500/10 hover:bg-violet-500/20 transition-colors"
-                            >
-                              <Gamepad2 className="h-3 w-3 mr-1" />
-                              {group.gameIds.length} {group.gameIds.length === 1 ? "Game" : "Games"}
-                            </Badge>
-                          </PopoverTrigger>
-                          <PopoverContent align="start" className="w-[320px] p-0 shadow-xl border-violet-500/20">
-                            <div className="p-3 border-b bg-violet-500/5">
-                              <h4 className="font-semibold text-sm flex items-center gap-2 text-violet-600">
-                                <Gamepad2 className="h-4 w-4" /> {t("competition.assign_game") || "Assigned Games"}
-                              </h4>
-                            </div>
-                            <div className="max-h-[250px] overflow-y-auto p-2">
-                              {group.gameIds.map(gId => {
-                                const game = games.find(g => g.name === gId);
-                                return (
-                                  <div key={gId} className="flex items-center gap-2 py-1.5 px-2 hover:bg-muted/50 rounded-md transition-colors group/game-item">
-                                    <div className="flex flex-col min-w-0 flex-1">
-                                      <span className="text-sm font-medium leading-tight truncate capitalize" title={game?.name || gId}>{game?.name || gId}</span>
-                                      {game && <span className="text-xs text-muted-foreground">{game.count.toLocaleString("id-ID")} sessions</span>}
+                                  
+                                  {qId && (
+                                    <div className="flex items-center gap-2 group/quiz-item bg-muted/30 p-1.5 rounded-md">
+                                      <BookOpen className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                      <div className="flex flex-col min-w-0 flex-1">
+                                        <span className="text-sm font-medium truncate" title={quiz?.title || qId}>{quiz?.title || qId}</span>
+                                        {quiz && <span className="text-[10px] text-muted-foreground">{quiz.questionCount} {t("competition.questions") || "questions"}</span>}
+                                      </div>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6 shrink-0 opacity-0 group-hover/quiz-item:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted"
+                                        title={t("competition.remove_quiz") || "Remove quiz"}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setRemoveConfirm({
+                                            type: "quiz",
+                                            groupId: group.id,
+                                            itemId: qId,
+                                            label: quiz?.title || qId,
+                                          });
+                                        }}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
                                     </div>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-5 w-5 shrink-0 opacity-0 group-hover/game-item:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted"
-                                      title="Remove game"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setRemoveConfirm({
-                                          type: "game",
-                                          groupId: group.id,
-                                          itemId: gId,
-                                          label: game?.name || gId,
-                                        });
-                                      }}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            <div className="p-2 border-t bg-violet-500/5">
-                              <Button size="sm" variant="ghost" className="w-full text-xs h-8 text-violet-600 hover:text-violet-700 hover:bg-violet-500/10" onClick={() => { setDetailDialog(null); setTimeout(() => openRoundsDialog(group), 150); }}>
-                                {t("competition.manage") || "Manage"} <ArrowUpRight className="ml-1 h-3 w-3" />
-                              </Button>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      )}
+                                  )}
+
+                                  {gId && (
+                                    <div className="flex items-center gap-2 group/game-item bg-violet-500/5 p-1.5 rounded-md mt-0.5">
+                                      <Gamepad2 className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                                      <div className="flex flex-col min-w-0 flex-1">
+                                        <span className="text-sm font-medium truncate capitalize text-violet-700 dark:text-violet-300" title={game?.name || gId}>{game?.name || gId}</span>
+                                        {game && <span className="text-[10px] text-violet-600/70 dark:text-violet-400/70">{game.count.toLocaleString("id-ID")} sessions</span>}
+                                      </div>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6 shrink-0 opacity-0 group-hover/game-item:opacity-100 transition-opacity text-violet-400 hover:text-violet-600 hover:bg-violet-500/10"
+                                        title={t("competition.remove_game") || "Remove game"}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setRemoveConfirm({
+                                            type: "game",
+                                            groupId: group.id,
+                                            itemId: gId,
+                                            label: game?.name || gId,
+                                          });
+                                        }}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                  
+                                  {!qId && !gId && (
+                                    <div className="text-xs text-muted-foreground italic px-1 py-1">{t("competition.empty_round") || "Empty round"}</div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="p-2 border-t bg-muted/10">
+                            <Button size="sm" variant="ghost" className="w-full text-xs h-8" onClick={() => { setDetailDialog(null); setTimeout(() => openRoundsDialog(group), 150); }}>
+                              {t("competition.manage_rounds") || "Manage Rounds"} <ArrowUpRight className="ml-1 h-3 w-3" />
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
                   <div className="flex items-center gap-2 shrink-0 mt-0">
                     <div className="w-56">
@@ -701,7 +706,7 @@ export function PhaseGroupStage({
                                       {member.playerName}
                                     </span>
                                     {group.stage === "Final" && finalists.find(f => f.id === member.playerId)?.isPresent === false && (
-                                      <Badge variant="destructive" className="text-[8px] h-4 px-1.5 py-0 uppercase leading-none font-bold shrink-0">Absent</Badge>
+                                      <Badge variant="destructive" className="text-[8px] h-4 px-1.5 py-0 uppercase leading-none font-bold shrink-0">{t("receptionist.absent") || "Absent"}</Badge>
                                     )}
                                   </div>
                                   <span className="text-xs text-muted-foreground truncate" title={`@${member.playerName.toLowerCase().replace(/\s+/g, '')}`}>
@@ -784,7 +789,7 @@ export function PhaseGroupStage({
                         setDetailDialog({ ...group, members: updatedMembers } as any);
                         toast.success(`Removed ${absentIds.length} absent participant(s).`);
                       }}>
-                      <Trash2 className="h-3 w-3" /> Cut Absent
+                      <Trash2 className="h-3 w-3" /> {t("competition.cut_absent") || "Cut Absent"}
                     </Button>
                   </DialogFooter>
                 )}
@@ -941,6 +946,7 @@ export function PhaseGroupStage({
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                      title={t("competition.remove_round") || "Remove round"}
                       onClick={() => {
                         const newRounds = [...roundsDialog.rounds];
                         newRounds.splice(idx, 1);

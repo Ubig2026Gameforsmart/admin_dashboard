@@ -58,6 +58,8 @@ export default function CompetitionDetailPage() {
   const [rulesExpanded, setRulesExpanded] = useState(false);
   const [isGroupsDirty, setIsGroupsDirty] = useState(false);
   const savedGroupsSnapshot = useRef<string>("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Wizard phase state
   const [activePhase, setActivePhase] = useState<CompetitionPhase>("registration");
@@ -214,6 +216,7 @@ export default function CompetitionDetailPage() {
       }
 
       setIsLoading(false);
+      setIsRefreshing(false);
     }
     getDetail();
 
@@ -268,7 +271,15 @@ export default function CompetitionDetailPage() {
     }
     fetchGames();
 
-  }, [compId, supabase, router]);
+  }, [compId, supabase, router, refreshKey]);
+
+  const handleRefreshData = () => {
+    if (isGroupsDirty && !window.confirm(t("competition.unsaved_changes_confirm") || "You have unsaved changes. Refreshing will discard them. Continue?")) {
+      return;
+    }
+    setIsRefreshing(true);
+    setRefreshKey(prev => prev + 1);
+  };
 
   // Track unsaved changes
   useEffect(() => {
@@ -715,6 +726,8 @@ export default function CompetitionDetailPage() {
             isSaving={isSavingGroups}
             currentUserId={currentUserId}
             isDirty={isGroupsDirty}
+            onRefresh={handleRefreshData}
+            isRefreshing={isRefreshing}
           />
         </TabsContent>
 
