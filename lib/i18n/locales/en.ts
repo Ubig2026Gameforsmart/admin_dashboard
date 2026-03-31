@@ -58,6 +58,7 @@ export const en: Record<string, string> = {
   "action.delete": "Delete",
   "action.view": "View",
   "action.add": "Add",
+  "action.start": "Start",
   "action.filter": "Filter",
   "action.close": "Close",
   "action.show_all": "Show All",

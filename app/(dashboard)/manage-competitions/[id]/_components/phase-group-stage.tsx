@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { DummyPlayer, MockQuiz } from "@/types/competition";
 import {
   Plus, Trash2, Users, UserPlus, BookOpen, Trophy, Clock,
-  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit, Gamepad2, Save, ArrowLeft, RefreshCw
+  ArrowUpRight, ChevronDown as ChevronDownIcon, ChevronUp, Maximize2, Edit, Gamepad2, Save, ArrowLeft, RefreshCw, Play
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -512,74 +512,97 @@ export function PhaseGroupStage({
                               <Trophy className="h-4 w-4" /> {t("competition.assigned_rounds") || "Assigned Rounds"}
                             </h4>
                           </div>
-                          <div className="max-h-[300px] overflow-y-auto p-2 space-y-2">
+                          <div className="max-h-[300px] overflow-y-auto p-2 space-y-2" onWheelCapture={(e) => e.stopPropagation()} onTouchMoveCapture={(e) => e.stopPropagation()}>
                             {Array.from({ length: totalRounds }).map((_, i) => {
                               const qId = group.quizIds[i];
                               const gId = group.gameIds[i];
                               const quiz = qId ? quizzes.find(q => q.id === qId) : null;
                               const game = gId ? games.find(g => g.name === gId) : null;
                               return (
-                                <div key={i} className="flex flex-col gap-1.5 p-2.5 border rounded-lg bg-card shadow-sm relative group/round">
-                                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex justify-between items-center">
-                                    <span>{t("competition.round") || "Round"} {i + 1}</span>
+                                <div key={i} className="flex flex-col border rounded-lg bg-card shadow-sm overflow-hidden group/round relative">
+                                  <div className="px-3 py-2 bg-muted/40 border-b flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                      {t("competition.round") || "Round"} {i + 1}
+                                    </span>
                                   </div>
                                   
-                                  {qId && (
-                                    <div className="flex items-center gap-2 group/quiz-item bg-muted/30 p-1.5 rounded-md">
-                                      <BookOpen className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                                      <div className="flex flex-col min-w-0 flex-1">
-                                        <span className="text-sm font-medium truncate" title={quiz?.title || qId}>{quiz?.title || qId}</span>
-                                        {quiz && <span className="text-[10px] text-muted-foreground">{quiz.questionCount} {t("competition.questions") || "questions"}</span>}
+                                  <div className="p-3 flex flex-col gap-2.5">
+                                    {qId && (
+                                      <div className="flex items-start gap-2.5 group/quiz-item">
+                                        <div className="mt-0.5 w-6 h-6 rounded-md bg-blue-500/10 flex flex-col items-center justify-center shrink-0">
+                                          <BookOpen className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                          <span className="text-sm font-medium leading-tight truncate" title={quiz?.title || qId}>{quiz?.title || qId}</span>
+                                          {quiz && <span className="text-[10.5px] text-muted-foreground mt-0.5">{quiz.questionCount} {t("competition.questions") || "questions"}</span>}
+                                        </div>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-6 w-6 shrink-0 opacity-0 group-hover/quiz-item:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted"
+                                          title={t("competition.remove_quiz") || "Remove quiz"}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setRemoveConfirm({
+                                              type: "quiz",
+                                              groupId: group.id,
+                                              itemId: qId,
+                                              label: quiz?.title || qId,
+                                            });
+                                          }}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
                                       </div>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-6 w-6 shrink-0 opacity-0 group-hover/quiz-item:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted"
-                                        title={t("competition.remove_quiz") || "Remove quiz"}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setRemoveConfirm({
-                                            type: "quiz",
-                                            groupId: group.id,
-                                            itemId: qId,
-                                            label: quiz?.title || qId,
-                                          });
-                                        }}
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  )}
+                                    )}
 
-                                  {gId && (
-                                    <div className="flex items-center gap-2 group/game-item bg-violet-500/5 p-1.5 rounded-md mt-0.5">
-                                      <Gamepad2 className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-                                      <div className="flex flex-col min-w-0 flex-1">
-                                        <span className="text-sm font-medium truncate capitalize text-violet-700 dark:text-violet-300" title={game?.name || gId}>{game?.name || gId}</span>
-                                        {game && <span className="text-[10px] text-violet-600/70 dark:text-violet-400/70">{game.count.toLocaleString("id-ID")} sessions</span>}
+                                    {gId && (
+                                      <div className="flex items-start gap-2.5 group/game-item">
+                                        <div className="mt-0.5 w-6 h-6 rounded-md bg-violet-500/10 flex flex-col items-center justify-center shrink-0">
+                                          <Gamepad2 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                                        </div>
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                          <span className="text-sm font-medium leading-tight truncate capitalize text-violet-700 dark:text-violet-300" title={game?.name || gId}>{game?.name || gId}</span>
+                                          {game && <span className="text-[10.5px] text-violet-600/70 dark:text-violet-400/70 mt-0.5">{game.count.toLocaleString("id-ID")} sessions</span>}
+                                        </div>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-6 w-6 shrink-0 opacity-0 group-hover/game-item:opacity-100 transition-opacity text-violet-400 hover:text-violet-600 hover:bg-violet-500/10"
+                                          title={t("competition.remove_game") || "Remove game"}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setRemoveConfirm({
+                                              type: "game",
+                                              groupId: group.id,
+                                              itemId: gId,
+                                              label: game?.name || gId,
+                                            });
+                                          }}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
                                       </div>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-6 w-6 shrink-0 opacity-0 group-hover/game-item:opacity-100 transition-opacity text-violet-400 hover:text-violet-600 hover:bg-violet-500/10"
-                                        title={t("competition.remove_game") || "Remove game"}
+                                    )}
+                                    
+                                    {!qId && !gId && (
+                                      <div className="text-xs text-muted-foreground italic text-center py-2">{t("competition.empty_round") || "Empty round"}</div>
+                                    )}
+                                  </div>
+
+                                  {(qId || gId) && (
+                                    <div className="px-2 py-1.5 bg-emerald-500/5 border-t border-emerald-500/10">
+                                      <Button 
+                                        size="sm" 
+                                        className="w-full h-8 text-[11px] font-medium gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-none"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setRemoveConfirm({
-                                            type: "game",
-                                            groupId: group.id,
-                                            itemId: gId,
-                                            label: game?.name || gId,
-                                          });
+                                          // TODO: Implement Session Creation Logic
                                         }}
                                       >
-                                        <Trash2 className="h-3 w-3" />
+                                        <Play className="h-3 w-3 fill-current" /> {t("action.start") || "Start"}
                                       </Button>
                                     </div>
-                                  )}
-                                  
-                                  {!qId && !gId && (
-                                    <div className="text-xs text-muted-foreground italic px-1 py-1">{t("competition.empty_round") || "Empty round"}</div>
                                   )}
                                 </div>
                               );
@@ -936,7 +959,7 @@ export function PhaseGroupStage({
             </DialogTitle>
             <p className="text-sm text-muted-foreground">{t("competition.configure_rounds_desc") || "Configure quizzes and games for each round"}</p>
           </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 mt-2">
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 mt-2" onWheelCapture={(e) => e.stopPropagation()} onTouchMoveCapture={(e) => e.stopPropagation()}>
             {roundsDialog?.rounds.map((round, idx) => (
               <div key={idx} className="flex flex-col gap-3 p-4 border rounded-lg bg-card/50 relative">
                 <div className="flex items-center justify-between">

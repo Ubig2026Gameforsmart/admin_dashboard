@@ -53,6 +53,7 @@ export const id: Record<string, string> = {
   "action.search": "Cari...",
   "action.filter": "Filter",
   "action.add": "Tambah",
+  "action.start": "Mulai",
   "action.edit": "Edit",
   "action.delete": "Hapus",
   "action.save": "Simpan",

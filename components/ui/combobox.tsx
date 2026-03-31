@@ -187,7 +187,7 @@ export function Combobox({
               </button>
             )}
           </div>
-          <CommandList className="flex-1 overflow-y-auto min-h-0 min-w-0 max-h-[300px]">
+          <CommandList className="flex-1 overflow-y-auto min-h-0 min-w-0 max-h-[300px]" onWheelCapture={(e) => e.stopPropagation()} onTouchMoveCapture={(e) => e.stopPropagation()}>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
               {filteredOptions.map((option) => (
