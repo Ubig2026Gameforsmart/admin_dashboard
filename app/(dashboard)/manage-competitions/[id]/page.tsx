@@ -183,10 +183,11 @@ export default function CompetitionDetailPage() {
         const { data: dbGroups } = await supabase
           .from("competition_groups")
           .select(`
-            id, name, stage, quiz_ids, game_ids, source_group_ids,
+            id, name, stage, rounds, source_group_ids,
             competition_group_members(participant_id, score, time_seconds, is_advanced)
           `)
-          .eq("competition_id", compId);
+          .eq("competition_id", compId)
+          .order("created_at", { ascending: true });
 
         if (dbGroups) {
           const loadedGroups: LocalGroup[] = dbGroups.map((g: any) => ({
@@ -194,8 +195,11 @@ export default function CompetitionDetailPage() {
             name: g.name,
             stage: g.stage || "",
             sources: g.source_group_ids || [],
-            quizIds: g.quiz_ids || [],
-            gameIds: g.game_ids || [],
+            rounds: (g.rounds || []).map((r: any, idx: number) => ({
+              round: r.round || idx + 1,
+              quiz_id: r.quiz_id || "",
+              game_id: r.game_id || "",
+            })),
             members: (g.competition_group_members || []).map((m: any) => {
               const memInfo = mappedPlayers.find(p => p.id === m.participant_id);
               return {
@@ -246,20 +250,26 @@ export default function CompetitionDetailPage() {
 
     // Fetch available games from game_sessions.application
     async function fetchGames() {
-      const { data, error } = await supabase
-        .rpc('get_distinct_applications')
-        .select('*');
+      // Use RPC function for efficiency (returns pre-aggregated unique games)
+      const { data, error } = await supabase.rpc('get_unique_games');
 
-      // Fallback: if RPC doesn't exist, query directly
-      if (error) {
+      if (!error && data) {
+        setAvailableGames(
+          (data as any[])
+            .map((row: any) => ({ name: row.name, count: Number(row.count) }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        );
+      } else {
+        // Fallback: if RPC doesn't exist, query directly with DISTINCT
         const { data: rawData } = await supabase
           .from("game_sessions")
-          .select("application");
+          .select("application")
+          .limit(10000);
         if (rawData) {
           const countMap: Record<string, number> = {};
           rawData.forEach((row: any) => {
             const app = row.application;
-            countMap[app] = (countMap[app] || 0) + 1;
+            if (app) countMap[app] = (countMap[app] || 0) + 1;
           });
           setAvailableGames(
             Object.entries(countMap)
@@ -306,8 +316,7 @@ export default function CompetitionDetailPage() {
         competition_id: compId,
         name: g.name,
         stage: g.stage || "",
-        quiz_ids: g.quizIds || [],
-        game_ids: g.gameIds || [],
+        rounds: g.rounds || [],
         source_group_ids: g.sources || []
       }));
 
