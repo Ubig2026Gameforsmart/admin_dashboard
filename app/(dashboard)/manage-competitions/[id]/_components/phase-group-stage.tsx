@@ -63,11 +63,16 @@ interface PhaseGroupStageProps {
   isRefreshing?: boolean;
 }
 
+export interface RoundConfig {
+  round: number;
+  quiz_id: string;
+  game_id: string;
+}
+
 export interface LocalGroup {
   id: string;
   name: string;
-  quizIds: string[];
-  gameIds: string[];
+  rounds: RoundConfig[];
   members: LocalGroupMember[];
   stage?: string;
   sources?: string[];
@@ -150,8 +155,7 @@ export function PhaseGroupStage({
     const newGroup: LocalGroup = {
       id: `grp-${Date.now()}`,
       name: newGroupName.trim(),
-      quizIds: [],
-      gameIds: [],
+      rounds: [],
       members: initialMembers,
       stage: newGroupStage,
       sources: newGroupSources,
@@ -217,27 +221,28 @@ export function PhaseGroupStage({
   };
 
   const openRoundsDialog = (group: LocalGroup) => {
-    const length = Math.max(group.quizIds.length, group.gameIds.length, 1);
-    const rounds = Array.from({ length }).map((_, i) => ({
-      quizId: group.quizIds[i] || "",
-      gameId: group.gameIds[i] || ""
-    }));
+    const rounds = group.rounds.length > 0
+      ? group.rounds.map(r => ({ quizId: r.quiz_id || "", gameId: r.game_id || "" }))
+      : [{ quizId: "", gameId: "" }];
     setRoundsDialog({ group, rounds });
   };
 
   const handleSaveRounds = () => {
     if (!roundsDialog) return;
     
-    let newQuizIds = roundsDialog.rounds.map(r => r.quizId);
-    let newGameIds = roundsDialog.rounds.map(r => r.gameId);
+    // Convert dialog rounds to RoundConfig[], trimming empty trailing rounds
+    let newRounds: RoundConfig[] = roundsDialog.rounds.map((r, idx) => ({
+      round: idx + 1,
+      quiz_id: r.quizId,
+      game_id: r.gameId,
+    }));
     
-    while(newQuizIds.length > 0 && newQuizIds[newQuizIds.length - 1] === "" && newGameIds[newGameIds.length - 1] === "") {
-        newQuizIds.pop();
-        newGameIds.pop();
+    while (newRounds.length > 0 && newRounds[newRounds.length - 1].quiz_id === "" && newRounds[newRounds.length - 1].game_id === "") {
+      newRounds.pop();
     }
 
     const newGroups = groups.map((g) =>
-      g.id === roundsDialog.group.id ? { ...g, quizIds: newQuizIds, gameIds: newGameIds } : g
+      g.id === roundsDialog.group.id ? { ...g, rounds: newRounds } : g
     );
     onGroupsChange(newGroups);
     setRoundsDialog(null);
@@ -425,8 +430,8 @@ export function PhaseGroupStage({
                     <Badge variant="secondary" className="text-[10px] gap-1 h-5">
                       <Users className="h-3 w-3" /> {group.members.length}
                     </Badge>
-                    {(group.quizIds.length > 0 || group.gameIds.length > 0) && (() => {
-                      const rounds = Math.max(group.quizIds.length, group.gameIds.length);
+                    {group.rounds.length > 0 && (() => {
+                      const rounds = group.rounds.length;
                       return (
                         <Badge variant="outline" className="text-[10px] h-5 gap-1 text-primary border-primary/20 bg-primary/10">
                           <Trophy className="h-3 w-3" /> {rounds} {rounds === 1 ? 'round' : 'rounds'}
@@ -492,8 +497,8 @@ export function PhaseGroupStage({
                       </Badge>
                     )}
                   </DialogTitle>
-                  {(group.quizIds.length > 0 || group.gameIds.length > 0) && (() => {
-                    const totalRounds = Math.max(group.quizIds.length, group.gameIds.length);
+                  {group.rounds.length > 0 && (() => {
+                    const totalRounds = group.rounds.length;
                     return (
                     <div className="flex items-center gap-2 pl-7 flex-wrap">
                       <Popover>
@@ -513,16 +518,16 @@ export function PhaseGroupStage({
                             </h4>
                           </div>
                           <div className="max-h-[300px] overflow-y-auto p-2 space-y-2" onWheelCapture={(e) => e.stopPropagation()} onTouchMoveCapture={(e) => e.stopPropagation()}>
-                            {Array.from({ length: totalRounds }).map((_, i) => {
-                              const qId = group.quizIds[i];
-                              const gId = group.gameIds[i];
+                            {group.rounds.map((roundConfig, i) => {
+                              const qId = roundConfig.quiz_id || "";
+                              const gId = roundConfig.game_id || "";
                               const quiz = qId ? quizzes.find(q => q.id === qId) : null;
                               const game = gId ? games.find(g => g.name === gId) : null;
                               return (
                                 <div key={i} className="flex flex-col border rounded-lg bg-card shadow-sm overflow-hidden group/round relative">
                                   <div className="px-3 py-2 bg-muted/40 border-b flex justify-between items-center">
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                      {t("competition.round") || "Round"} {i + 1}
+                                      {t("competition.round") || "Round"} {roundConfig.round || i + 1}
                                     </span>
                                   </div>
                                   
@@ -1128,21 +1133,25 @@ export function PhaseGroupStage({
                   }
                   toast.success(`${removeConfirm.label} removed from group.`);
                 } else if (removeConfirm.type === "quiz") {
-                  const newQuizIds = group.quizIds.filter((id) => id !== removeConfirm.itemId);
+                  const newRounds = group.rounds.map(r =>
+                    r.quiz_id === removeConfirm.itemId ? { ...r, quiz_id: "" } : r
+                  ).filter(r => r.quiz_id !== "" || r.game_id !== "").map((r, i) => ({ ...r, round: i + 1 }));
                   newGroups = groups.map((g) =>
-                    g.id === groupId ? { ...g, quizIds: newQuizIds } : g
+                    g.id === groupId ? { ...g, rounds: newRounds } : g
                   );
                   if (detailDialog?.id === groupId) {
-                    setDetailDialog({ ...group, quizIds: newQuizIds } as any);
+                    setDetailDialog({ ...group, rounds: newRounds } as any);
                   }
                   toast.success(`Quiz removed from group.`);
                 } else if (removeConfirm.type === "game") {
-                  const newGameIds = group.gameIds.filter((id) => id !== removeConfirm.itemId);
+                  const newRounds = group.rounds.map(r =>
+                    r.game_id === removeConfirm.itemId ? { ...r, game_id: "" } : r
+                  ).filter(r => r.quiz_id !== "" || r.game_id !== "").map((r, i) => ({ ...r, round: i + 1 }));
                   newGroups = groups.map((g) =>
-                    g.id === groupId ? { ...g, gameIds: newGameIds } : g
+                    g.id === groupId ? { ...g, rounds: newRounds } : g
                   );
                   if (detailDialog?.id === groupId) {
-                    setDetailDialog({ ...group, gameIds: newGameIds } as any);
+                    setDetailDialog({ ...group, rounds: newRounds } as any);
                   }
                   toast.success(`Game removed from group.`);
                 }

@@ -15,11 +15,10 @@ create table public.competition_participants (
 create table public.competition_groups (
   id text not null,
   name text not null,
-  quiz_ids text[] null,
+  rounds jsonb null default '[]'::jsonb,
   created_at timestamp with time zone not null default now(),
   competition_id text null,
   stage text null,
-  game_ids text[] null,
   source_group_ids text[] null,
   constraint competition_groups_pkey primary key (id)
 ) TABLESPACE pg_default;

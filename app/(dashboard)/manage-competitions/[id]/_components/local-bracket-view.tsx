@@ -326,8 +326,8 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageRou
                   </Badge>
                 )}
               </DialogTitle>
-              {selectedGroup && (selectedGroup.quizIds.length > 0 || selectedGroup.gameIds.length > 0) && (() => {
-                const totalRounds = Math.max(selectedGroup.quizIds.length, selectedGroup.gameIds.length);
+              {selectedGroup && selectedGroup.rounds.length > 0 && (() => {
+                const totalRounds = selectedGroup.rounds.length;
                 return (
                   <div className="flex items-center gap-2 pl-7 flex-wrap mt-2">
                     <Popover>
@@ -347,16 +347,16 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageRou
                           </h4>
                         </div>
                         <div className="max-h-[300px] overflow-y-auto p-2 space-y-2" onWheelCapture={(e) => e.stopPropagation()} onTouchMoveCapture={(e) => e.stopPropagation()}>
-                          {Array.from({ length: totalRounds }).map((_, i) => {
-                            const qId = selectedGroup.quizIds[i];
-                            const gId = selectedGroup.gameIds[i];
+                          {selectedGroup.rounds.map((roundConfig, i) => {
+                            const qId = roundConfig.quiz_id || "";
+                            const gId = roundConfig.game_id || "";
                             const quiz = qId ? quizzes.find(q => q.id === qId) : null;
                             const game = gId ? games.find(g => g.name === gId) : null;
                             return (
                               <div key={i} className="flex flex-col border rounded-lg bg-card shadow-sm overflow-hidden group/round relative">
                                 <div className="px-3 py-2 bg-muted/40 border-b flex justify-between items-center">
                                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                    {t("competition.round") || "Round"} {i + 1}
+                                    {t("competition.round") || "Round"} {roundConfig.round || i + 1}
                                   </span>
                                 </div>
                                 
