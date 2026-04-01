@@ -17,7 +17,7 @@ interface StartRoundParams {
   roundIndex: number;
   quizId: string | null;
   gameId: string | null;
-  participants: Array<{ id: string; user_id: string; [key: string]: any }>;
+  participants: Array<{ id: string; user_id: string;[key: string]: any }>;
   hostId: string;
 }
 
@@ -41,7 +41,7 @@ export async function startRoundSession(params: StartRoundParams) {
       // Resume existing match
       sessionXId = existingRound.session_id;
       gamePin = existingRound.game_pin || gamePin;
-      newMainGroupId = existingRound.lobby_id || generateXID(); 
+      newMainGroupId = existingRound.lobby_id || generateXID();
       isReusingSession = true;
     }
 
@@ -76,7 +76,7 @@ export async function startRoundSession(params: StartRoundParams) {
     // 3. Prepare Notifications for all users EXCEPT the host
     // Sending it to the host will cause the Axiom client to auto-decline it, since the host is already in the lobby.
     const notificationReceivers = resolvedUsers.filter(u => u.user_id !== params.hostId);
-    
+
     const notifications = notificationReceivers.map((u) => ({
       user_id: u.user_id,
       actor_id: params.hostId,
@@ -166,12 +166,12 @@ export async function startRoundSession(params: StartRoundParams) {
     }
 
     // --- SUCCESS: GENERATE REDIRECT URL ---
-    const redirectUrl = gameIntegration 
+    const redirectUrl = gameIntegration
       ? gameIntegration.getRedirectUrl({
-          quizId: params.quizId || undefined,
-          generatedSessionId: sessionXId,
-          gamePin: gamePin,
-        })
+        quizId: params.quizId || undefined,
+        generatedSessionId: sessionXId,
+        gamePin: gamePin,
+      })
       : `/host/${gamePin}/settings`;
 
     return { success: true, redirectUrl };
