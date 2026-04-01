@@ -135,14 +135,38 @@ export default function CompetitionDetailPage() {
           }
         }
 
-        // Fetch Game Sessions for Stats
+        // Fetch saved LocalGroups configurations FIRST (we need session_ids from rounds)
+        const { data: dbGroups } = await supabase
+          .from("competition_groups")
+          .select(`
+            id, name, stage, rounds, source_group_ids,
+            competition_group_members(participant_id, score, time_seconds, is_advanced)
+          `)
+          .eq("competition_id", compId)
+          .order("created_at", { ascending: true });
+
+        // Fetch Game Sessions for Stats — ONLY sessions linked to this competition!
+        // Collect all session_ids that were stamped into the rounds JSONB
         let userStats: Record<string, { gamesPlayed: number, totalScore: number }> = {};
-        if (userIds.length > 0) {
+        const sessionIds: string[] = [];
+        if (dbGroups) {
+          dbGroups.forEach((g: any) => {
+            (g.rounds || []).forEach((r: any) => {
+              if (r.session_id) sessionIds.push(r.session_id);
+            });
+          });
+        }
+
+        let allCompetitionSessions: any[] = [];
+
+        if (sessionIds.length > 0 && userIds.length > 0) {
           const { data: sessionsData, error: sessionsError } = await supabase
             .from("game_sessions")
-            .select("participants");
+            .select("id, participants")
+            .in("id", sessionIds);
 
           if (!sessionsError && sessionsData) {
+            allCompetitionSessions = sessionsData;
             sessionsData.forEach((session: any) => {
               if (Array.isArray(session.participants)) {
                 session.participants.forEach((p: any) => {
@@ -179,38 +203,74 @@ export default function CompetitionDetailPage() {
 
         setPlayers(mappedPlayers);
 
-        // Fetch saved LocalGroups configurations
-        const { data: dbGroups } = await supabase
-          .from("competition_groups")
-          .select(`
-            id, name, stage, rounds, source_group_ids,
-            competition_group_members(participant_id, score, time_seconds, is_advanced)
-          `)
-          .eq("competition_id", compId)
-          .order("created_at", { ascending: true });
-
         if (dbGroups) {
-          const loadedGroups: LocalGroup[] = dbGroups.map((g: any) => ({
-            id: g.id,
-            name: g.name,
-            stage: g.stage || "",
-            sources: g.source_group_ids || [],
-            rounds: (g.rounds || []).map((r: any, idx: number) => ({
-              round: r.round || idx + 1,
-              quiz_id: r.quiz_id || "",
-              game_id: r.game_id || "",
-            })),
-            members: (g.competition_group_members || []).map((m: any) => {
-              const memInfo = mappedPlayers.find(p => p.id === m.participant_id);
-              return {
-                playerId: m.participant_id,
-                playerName: memInfo?.name || m.participant_id,
-                score: Number(m.score) || 0,
-                timeSeconds: m.time_seconds || 0,
-                isAdvanced: m.is_advanced || false,
-              };
-            })
-          }));
+          const loadedGroups: LocalGroup[] = dbGroups.map((g: any) => {
+            // Collect session IDs specifically for THIS GROUP
+            const groupSessionIds = (g.rounds || [])
+              .map((r: any) => r.session_id)
+              .filter(Boolean);
+
+            // Compute participant stats for THIS GROUP only
+            const groupStats: Record<string, { gamesPlayed: number, totalScore: number, totalTime: number }> = {};
+            
+            if (groupSessionIds.length > 0 && allCompetitionSessions.length > 0) {
+              allCompetitionSessions.forEach((session: any) => {
+                if (groupSessionIds.includes(session.id) && Array.isArray(session.participants)) {
+                  session.participants.forEach((p: any) => {
+                    const uid = p.user_id;
+                    if (uid) {
+                      if (!groupStats[uid]) groupStats[uid] = { gamesPlayed: 0, totalScore: 0, totalTime: 0 };
+                      groupStats[uid].gamesPlayed += 1;
+                      groupStats[uid].totalScore += p.score || 0;
+                      groupStats[uid].totalTime += p.time_seconds || p.time || 0;
+                    }
+                  });
+                }
+              });
+            }
+
+            return {
+              id: g.id,
+              name: g.name,
+              stage: g.stage || "",
+              sources: g.source_group_ids || [],
+              rounds: (g.rounds || []).map((r: any, idx: number) => ({
+                round: r.round || idx + 1,
+                quiz_id: r.quiz_id || "",
+                game_id: r.game_id || "",
+                session_id: r.session_id || undefined,
+                game_pin: r.game_pin || undefined,
+              })),
+              members: (g.competition_group_members || []).map((m: any) => {
+                const memInfo = mappedPlayers.find(p => p.id === m.participant_id);
+                // Dynamically fetch from calculated stats for this specific group's sessions
+                const pStats = memInfo && memInfo.username ? groupStats[memInfo.username] || groupStats[m.participant_id] : groupStats[m.participant_id] || null;
+                
+                // If there are real sessions played for this group, use the average!
+                // Otherwise fallback to static score in DB if available.
+                let useScore = Number(m.score) || 0;
+                let useTime = m.time_seconds || 0;
+
+                // Let's rely heavily on user_id finding. Often m.participant_id is the user_id or player ID.
+                const realUserId = memInfo?.username || memInfo?.id; 
+                let exactStats = groupStats[m.participant_id]; // Direct match
+                if (!exactStats && memInfo?.username) exactStats = groupStats[memInfo.username]; // Username match
+
+                if (exactStats && exactStats.gamesPlayed > 0) {
+                  useScore = Number((exactStats.totalScore / exactStats.gamesPlayed).toFixed(1));
+                  useTime = exactStats.totalTime;
+                }
+
+                return {
+                  playerId: m.participant_id,
+                  playerName: memInfo?.name || m.participant_id,
+                  score: useScore,
+                  timeSeconds: useTime,
+                  isAdvanced: m.is_advanced || false,
+                };
+              })
+            };
+          });
           setLocalGroups(loadedGroups);
           savedGroupsSnapshot.current = JSON.stringify(loadedGroups);
         }
@@ -734,6 +794,7 @@ export default function CompetitionDetailPage() {
             onSave={handleSaveGroupsToDb}
             isSaving={isSavingGroups}
             currentUserId={currentUserId}
+            competitionId={compId}
             isDirty={isGroupsDirty}
             onRefresh={handleRefreshData}
             isRefreshing={isRefreshing}

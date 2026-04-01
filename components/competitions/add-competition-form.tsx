@@ -128,7 +128,7 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
       const rulesArray = formRules.split("\n").filter((r: string) => r.trim() !== "");
 
       if (compId) {
-        const slug = formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + compId.substring(0, 4);
+        const slug = formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-");
         const updateData = {
           title: formTitle,
           slug: slug,
@@ -153,7 +153,7 @@ export function AddCompetitionForm({ initialData, compId }: { initialData?: any;
         router.push(`/manage-competitions/${compId}`);
       } else {
         const newId = generateXID();
-        const slug = formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + newId.substring(0, 4);
+        const slug = formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-");
         const { error } = await supabase.from("competitions").insert({
           id: newId,
           title: formTitle,

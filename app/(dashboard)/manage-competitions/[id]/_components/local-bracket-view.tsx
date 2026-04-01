@@ -3,10 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "@/lib/i18n";
 import { LocalGroup, LocalGroupMember, GameApp } from "./phase-group-stage";
-import { Trophy, Users, ArrowUpRight, Clock, BookOpen, Gamepad2, Play } from "lucide-react";
+import { Trophy, Users, ArrowUpRight, Clock, BookOpen, Gamepad2, Play, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from "sonner";
+import { startRoundSession } from "../actions";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +23,8 @@ interface LocalBracketViewProps {
   groups: LocalGroup[];
   quizzes?: MockQuiz[];
   games?: GameApp[];
+  competitionId?: string;
+  currentUserId?: string | null;
   onManageRounds?: (group: LocalGroup) => void;
 }
 
@@ -31,10 +35,11 @@ function formatTime(seconds: number): string {
   return `${m}m ${s.toString().padStart(2, "0")}s`;
 }
 
-export function LocalBracketView({ groups, quizzes = [], games = [], onManageRounds }: LocalBracketViewProps) {
+export function LocalBracketView({ groups, quizzes = [], games = [], competitionId, currentUserId, onManageRounds }: LocalBracketViewProps) {
   const { t } = useTranslation();
   const [selectedGroup, setSelectedGroup] = useState<LocalGroup | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isStartingSession, setIsStartingSession] = useState<{ groupId: string; roundIndex: number } | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +53,41 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageRou
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
+
+  const handleStartSessionClick = async (group: LocalGroup, roundIndex: number, quizId: string | null, gameId: string | null) => {
+    if (!competitionId || !currentUserId) {
+      toast.error(t("comp_detail.error_missing_data") || "Missing competition or host data.");
+      return;
+    }
+
+    setIsStartingSession({ groupId: group.id, roundIndex });
+    toast.loading(t("comp_detail.creating_session") || "Creating game session...", { id: "start-session" });
+
+    try {
+      const res = await startRoundSession({
+        competitionId,
+        groupId: group.id,
+        groupName: group.name,
+        roundIndex,
+        quizId,
+        gameId,
+        participants: group.members.map(m => ({ id: m.playerId, user_id: m.playerId, name: m.playerName })),
+        hostId: currentUserId
+      });
+
+      if (res.success && res.redirectUrl) {
+        toast.success(t("comp_detail.session_created") || "Session created successfully!", { id: "start-session" });
+        window.open(res.redirectUrl, "_blank"); // Open host settings in new tab
+      } else {
+        throw new Error(res.error || "Unknown error creating session");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to start session", { id: "start-session" });
+    } finally {
+      setIsStartingSession(null);
+    }
+  };
 
   if (groups.length === 0) {
     return (
@@ -395,12 +435,18 @@ export function LocalBracketView({ groups, quizzes = [], games = [], onManageRou
                                     <Button 
                                       size="sm" 
                                       className="w-full h-8 text-[11px] font-medium gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-none"
+                                      disabled={isStartingSession?.groupId === selectedGroup.id && isStartingSession?.roundIndex === i}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        // TODO: Implement Session Creation Logic
+                                        handleStartSessionClick(selectedGroup, i, qId, gId);
                                       }}
                                     >
-                                      <Play className="h-3 w-3 fill-current" /> {t("action.start") || "Start"}
+                                      {isStartingSession?.groupId === selectedGroup.id && isStartingSession?.roundIndex === i ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Play className="h-3 w-3 fill-current" />
+                                      )}
+                                      {t("action.start") || "Start"}
                                     </Button>
                                   </div>
                                 )}

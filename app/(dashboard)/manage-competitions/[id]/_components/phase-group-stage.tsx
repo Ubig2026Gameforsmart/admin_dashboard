@@ -43,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Search, ChevronDown } from "lucide-react";
 import { LocalBracketView } from "./local-bracket-view";
+import { generateXID } from "@/lib/id-generator";
 
 export interface GameApp {
   name: string;
@@ -58,6 +59,7 @@ interface PhaseGroupStageProps {
   onSave?: () => void;
   isSaving?: boolean;
   currentUserId?: string | null;
+  competitionId?: string;
   isDirty?: boolean;
   onRefresh?: () => void;
   isRefreshing?: boolean;
@@ -102,6 +104,7 @@ export function PhaseGroupStage({
   onSave,
   isSaving,
   currentUserId,
+  competitionId,
   isDirty,
   onRefresh,
   isRefreshing,
@@ -153,7 +156,7 @@ export function PhaseGroupStage({
     }
 
     const newGroup: LocalGroup = {
-      id: `grp-${Date.now()}`,
+      id: generateXID(),
       name: newGroupName.trim(),
       rounds: [],
       members: initialMembers,
@@ -201,8 +204,8 @@ export function PhaseGroupStage({
       return {
         playerId: pId,
         playerName: player?.name || pId,
-        score: Math.min(100, Math.max(0, Math.round((player?.avgScore || 50) + (Math.random() * 20 - 10)))),
-        timeSeconds: Math.floor(Math.random() * 300) + 60,
+        score: 0,
+        timeSeconds: 0,
         isAdvanced: false,
       };
     });
@@ -1256,6 +1259,8 @@ export function PhaseGroupStage({
             groups={groups} 
             quizzes={quizzes} 
             games={games} 
+            competitionId={competitionId}
+            currentUserId={currentUserId}
             onManageRounds={(g) => { setDetailDialog(null); setTimeout(() => openRoundsDialog(g), 150); }} 
           />
         </>
