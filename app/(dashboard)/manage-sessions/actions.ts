@@ -79,6 +79,8 @@ export async function fetchStaleWaitingSessions(): Promise<{
     }
 }
 
+import { revalidatePath } from "next/cache";
+
 export async function clearSessions(sessionIds: string[]): Promise<{
     cleared: number;
     error: string | null;
@@ -90,12 +92,24 @@ export async function clearSessions(sessionIds: string[]): Promise<{
 
         const supabase = getSupabaseAdminClient();
 
+        // 1. Pre-emptively delete related notifications to avoid foreign key constraints
+        await supabase
+            .from("notifications")
+            .delete()
+            .eq("entity_type", "session")
+            .in("entity_id", sessionIds);
+
+        // 2. Delete the actual game sessions
         const { error } = await supabase
             .from("game_sessions")
             .delete()
             .in("id", sessionIds);
 
         if (error) throw error;
+
+        // 3. Force Next.js cache bypass so the table UI refreshes properly
+        revalidatePath("/manage-sessions");
+        revalidatePath("/(dashboard)/manage-sessions", "page");
 
         return { cleared: sessionIds.length, error: null };
     } catch (err: any) {

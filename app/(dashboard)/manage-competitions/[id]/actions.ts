@@ -81,13 +81,39 @@ export async function startRoundSession(params: StartRoundParams) {
     const notifications = notificationReceivers.map((u) => ({
       user_id: u.user_id,
       actor_id: params.hostId,
-      type: "session",
+      type: "sessionGroup", // <-- Diubah menjadi sessionGroup
       entity_type: "session",
       entity_id: sessionXId,
       from_group_id: newMainGroupId,
       status: null,
       content: null
     }));
+
+    // Fetch Quiz Data for quiz_detail (required for GameForSmart UI)
+    let quizDetail = null;
+    if (params.quizId) {
+      const { data: quizData } = await supabaseMain
+        .from("quizzes")
+        .select("id, title, description, category, language, image_url, profiles ( username, avatar_url )")
+        .eq("id", params.quizId)
+        .single();
+        
+      if (quizData) {
+        const profileData = Array.isArray(quizData.profiles)
+          ? quizData.profiles[0]
+          : quizData.profiles;
+          
+        quizDetail = {
+          title:            quizData.title,
+          description:      quizData.description || null,
+          category:         quizData.category || "general",
+          language:         quizData.language || "id",
+          image:            quizData.image_url || null,
+          creator_username: profileData?.username || "Unknown",
+          creator_avatar:   profileData?.avatar_url || null
+        };
+      }
+    }
 
     // 4. Prepare Main Game Session Payload
     const mainSessionPayload = {
@@ -98,16 +124,17 @@ export async function startRoundSession(params: StartRoundParams) {
       status: "waiting",
       total_time_minutes: 5,
       question_limit: "5",
-      difficulty: "easy",
-      game_end_mode: "manual",
+      game_end_mode: "first_finish",
       allow_join_after_start: false,
       participants: [],
       responses: [],
       current_questions: [],
       application: params.gameId || "axiom", // fallback
+      quiz_detail: quizDetail,
     };
 
-    const gameIntegration = GameRegistry[params.gameId || "axiom"];
+    const lookupGameId = params.gameId ? params.gameId.toLowerCase() : "axiom";
+    const gameIntegration = GameRegistry[lookupGameId];
 
     // --- EXECUTE MAIN DATABASE INSERTS ---
     if (!isReusingSession) {
@@ -173,7 +200,7 @@ export async function startRoundSession(params: StartRoundParams) {
         generatedSessionId: sessionXId,
         gamePin: gamePin,
       })
-      : `/host/${gamePin}/settings`;
+      : `https://app.gameforsmart.com/host/${sessionXId}/settings`;
 
     return { success: true, redirectUrl };
 
