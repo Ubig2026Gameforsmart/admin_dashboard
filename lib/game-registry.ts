@@ -9,6 +9,14 @@ export const axiomSupabase =
     ? createClient(axiomSupabaseUrl, axiomSupabaseKey)
     : null;
 
+const gfsSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_URL_Gameforsmart;
+const gfsSupabaseKey = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ANON_KEY_Gameforsmart;
+
+export const gfsSupabase = 
+  gfsSupabaseUrl && gfsSupabaseKey 
+    ? createClient(gfsSupabaseUrl, gfsSupabaseKey)
+    : null;
+
 // The data passed to the registry when starting a game
 export interface GameSessionContext {
   quizId?: string;
@@ -30,13 +38,51 @@ export interface GameIntegration {
    * Optional: Logic to inject/insert the room/session directly into the game's specific Supabase 
    * (e.g., establishing a "status: waiting" room in Axiom's Realtime DB)
    */
-  initializeSession?: (context: GameSessionContext) => Promise<{ success: boolean; data?: any; error?: any }>;
+  initializeSession?: (context: GameSessionContext) => Promise<{ success: boolean; data?: Record<string, any> | null; error?: any }>;
   
   /**
    * Returns the final URL the Admin Dashboard should open in a new tab
    */
   getRedirectUrl: (context: GameSessionContext) => string;
 }
+
+const gfsIntegration: GameIntegration = {
+  name: "Quiz V2 (GameForSmart Main)",
+  
+  initializeSession: async (context) => {
+    if (!gfsSupabase) {
+      return { success: false, error: "GameForSmart Supabase environment variables missing." };
+    }
+    
+    const payload = {
+      id: context.generatedSessionId,
+      game_pin: context.gamePin,
+      quiz_id: context.quizId || "",
+      status: "waiting",
+      host_id: context.hostId || "",
+      total_time_minutes: 5,
+      game_end_mode: "first_finish",
+      allow_join_after_start: false,
+      question_limit: "5",
+      application: "Quiz V2",
+    };
+    
+    // GFS typically uses 'game_sessions_rt'
+    const { data, error } = await gfsSupabase.from('game_sessions_rt').insert(payload);
+    
+    if (error) {
+      console.error("GameForSmart DB Insert Error:", error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true, data };
+  },
+
+  getRedirectUrl: (context) => {
+    // Uses the generatedSessionId (XID) according to the user's requirement
+    return `https://app.gameforsmart.com/host/${context.generatedSessionId}/settings`;
+  }
+};
 
 export const GameRegistry: Record<string, GameIntegration> = {
   // Application ID is the key (as stored in game_sessions.application)
@@ -76,6 +122,10 @@ export const GameRegistry: Record<string, GameIntegration> = {
     }
   },
 
+  // Map alternative names for GameForSmart
+  "quiz v2": gfsIntegration,
+  "quiz_v2": gfsIntegration,
+  "gameforsmart": gfsIntegration,
+  
   // TODO: Add zigma, crazyrace, etc. below later:
-  // "crazyrace": { ... }
 };
