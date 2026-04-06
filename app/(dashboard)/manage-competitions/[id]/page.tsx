@@ -143,7 +143,7 @@ export default function CompetitionDetailPage() {
             competition_group_members(participant_id, score, time_seconds, is_advanced)
           `)
           .eq("competition_id", compId)
-          .order("created_at", { ascending: true });
+          .order("id", { ascending: true });
 
         // Fetch Game Sessions for Stats — ONLY sessions linked to this competition!
         // Collect all session_ids that were stamped into the rounds JSONB
@@ -188,6 +188,7 @@ export default function CompetitionDetailPage() {
 
           return {
             id: p.id,
+            userId: p.user_id,
             name: prof.fullname || prof.username || "Unknown",
             username: prof.username || p.user_id,
             avatar: prof.avatar_url || null,
@@ -222,7 +223,15 @@ export default function CompetitionDetailPage() {
                       if (!groupStats[uid]) groupStats[uid] = { gamesPlayed: 0, totalScore: 0, totalTime: 0 };
                       groupStats[uid].gamesPlayed += 1;
                       groupStats[uid].totalScore += p.score || 0;
-                      groupStats[uid].totalTime += p.time_seconds || p.time || 0;
+                      let t = 0;
+                      if (p.time_seconds) t = p.time_seconds;
+                      else if (p.time) t = p.time;
+                      else if (p.started && p.ended) {
+                        const start = new Date(p.started).getTime();
+                        const end = new Date(p.ended).getTime();
+                        if (end > start) t = Math.floor((end - start) / 1000);
+                      }
+                      groupStats[uid].totalTime += t;
                     }
                   });
                 }
@@ -244,17 +253,15 @@ export default function CompetitionDetailPage() {
               members: (g.competition_group_members || []).map((m: any) => {
                 const memInfo = mappedPlayers.find(p => p.id === m.participant_id);
                 // Dynamically fetch from calculated stats for this specific group's sessions
-                const pStats = memInfo && memInfo.username ? groupStats[memInfo.username] || groupStats[m.participant_id] : groupStats[m.participant_id] || null;
+                const realUserId = memInfo?.userId || null;
+                const pStats = realUserId ? groupStats[realUserId] : groupStats[m.participant_id] || null;
                 
                 // If there are real sessions played for this group, use the average!
                 // Otherwise fallback to static score in DB if available.
                 let useScore = Number(m.score) || 0;
                 let useTime = m.time_seconds || 0;
 
-                // Let's rely heavily on user_id finding. Often m.participant_id is the user_id or player ID.
-                const realUserId = memInfo?.username || memInfo?.id; 
-                let exactStats = groupStats[m.participant_id]; // Direct match
-                if (!exactStats && memInfo?.username) exactStats = groupStats[memInfo.username]; // Username match
+                let exactStats = realUserId ? groupStats[realUserId] : groupStats[m.participant_id];
 
                 if (exactStats && exactStats.gamesPlayed > 0) {
                   useScore = Number((exactStats.totalScore / exactStats.gamesPlayed).toFixed(1));

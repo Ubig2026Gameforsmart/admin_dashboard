@@ -414,14 +414,13 @@ export function LocalBracketView({ groups, quizzes = [], games = [], competition
                                   )}
 
                                   {gId && (
-                                    <div className="flex items-start gap-2.5">
-                                      <div className="mt-0.5 w-6 h-6 rounded-md bg-violet-500/10 flex flex-col items-center justify-center shrink-0">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-6 h-6 rounded-md bg-violet-500/10 flex items-center justify-center shrink-0">
                                         <Gamepad2 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                                       </div>
-                                      <div className="flex flex-col min-w-0 flex-1">
-                                        <span className="text-sm font-medium leading-tight truncate capitalize text-violet-700 dark:text-violet-300" title={game?.name || gId}>{game?.name || gId}</span>
-                                        {game && <span className="text-[10.5px] text-violet-600/70 dark:text-violet-400/70 mt-0.5">{game.count.toLocaleString("id-ID")} sessions</span>}
-                                      </div>
+                                      <span className="text-sm font-medium leading-none truncate capitalize text-violet-700 dark:text-violet-300 flex-1" title={game?.name || gId}>
+                                        {game?.name || gId}
+                                      </span>
                                     </div>
                                   )}
                                   
