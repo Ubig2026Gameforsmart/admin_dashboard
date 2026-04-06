@@ -70,6 +70,7 @@ export interface GroupMember {
 
 export interface DummyPlayer {
   id: string;
+  userId?: string;
   name: string;
   username?: string;
   avatar: string | null;
