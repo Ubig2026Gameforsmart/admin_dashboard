@@ -71,7 +71,7 @@ export async function startRoundSession(params: StartRoundParams) {
       description: "Match Lobby",
       creator_id: params.hostId,
       members: members,
-      settings: { status: "private" },
+      settings: { status: "secret", admins_approval: true },
     };
 
     // 3. Prepare Notifications for all users EXCEPT the host
