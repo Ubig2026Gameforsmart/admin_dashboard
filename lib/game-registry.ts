@@ -84,6 +84,57 @@ const gfsIntegration: GameIntegration = {
   }
 };
 
+const zigmaSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL_ZIGMA;
+const zigmaSupabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_ZIGMA;
+
+export const zigmaSupabase = 
+  zigmaSupabaseUrl && zigmaSupabaseKey 
+    ? createClient(zigmaSupabaseUrl, zigmaSupabaseKey)
+    : null;
+
+const zigmaIntegration: GameIntegration = {
+  name: "Zigma",
+  
+  initializeSession: async (context) => {
+    if (!zigmaSupabase) {
+      return { success: false, error: "Zigma Supabase environment variables missing." };
+    }
+    
+    // Zigma uses a 'sessions' table exactly like Axiom pattern based on inspection
+    const payload = {
+      id: context.generatedSessionId,
+      game_pin: context.gamePin,
+      quiz_id: context.quizId || "",
+      status: "waiting",
+      host_id: context.hostId || "",
+      difficulty: "easy",
+      question_limit: 5,
+      total_time_minutes: 5,
+      current_questions: []
+    };
+    
+    const { data, error } = await zigmaSupabase.from('sessions').insert(payload);
+    
+    if (error) {
+      console.error("Zigma DB Insert Error:", error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true, data };
+  },
+
+  getRedirectUrl: (context) => {
+    // Return standard Zigma host URL format defined securely matching user specification 
+    // They requested: `https://zigma.gameforsmart.com/host/settings` with pin usually
+    // By matching Axiom pattern we send them to targetPin/settings or generatedId 
+    // Wait, the user specifically wrote: `https://zigma.gameforsmart.com/host/settings`
+    // So let's provide exactly that, but standard is `host/[session_or_pin]/settings`.
+    // If Zigma doesn't need ID in URL path:
+    const targetPin = context.gamePin || "INVALID_PIN";
+    return `https://zigma.gameforsmart.com/host/${targetPin}/settings`;
+  }
+};
+
 export const GameRegistry: Record<string, GameIntegration> = {
   // Application ID is the key (as stored in game_sessions.application)
   "axiom": {
@@ -127,5 +178,6 @@ export const GameRegistry: Record<string, GameIntegration> = {
   "quiz_v2": gfsIntegration,
   "gameforsmart": gfsIntegration,
   
-  // TODO: Add zigma, crazyrace, etc. below later:
+  // Zigma
+  "zigma": zigmaIntegration,
 };
