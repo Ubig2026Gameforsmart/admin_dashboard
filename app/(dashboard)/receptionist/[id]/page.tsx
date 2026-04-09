@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -62,6 +63,7 @@ export default function ReceptionistDetailPage() {
   const [participantQuery, setParticipantQuery] = useState("");
   const [attendanceQuery, setAttendanceQuery] = useState("");
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [scanResult, setScanResult] = useState<{ status: 'success' | 'error' | 'info', title: string, desc: string } | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const scannerRef = useRef<any>(null);
@@ -209,7 +211,7 @@ export default function ReceptionistDetailPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [compId]);
+  }, [compId, refreshTrigger]);
 
   // Use a ref for participants so the QR scanner callback always has latest data
   const participantsRef = useRef(participants);
@@ -481,13 +483,25 @@ export default function ReceptionistDetailPage() {
           <h1 className="text-2xl font-bold text-foreground line-clamp-1" title={competition?.title}>
             {competition?.title || "—"}
           </h1>
-          <Button
-            onClick={() => setQrDialogOpen(true)}
-            className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-          >
-            <QrCode className="h-4 w-4" />
-            {t("receptionist.scan_qr") || "Scan QR"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setRefreshTrigger((prev) => prev + 1)}
+              disabled={isLoading}
+              title={t("common.refresh") || "Refresh Data"}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button
+              onClick={() => setQrDialogOpen(true)}
+              className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+            >
+              <QrCode className="h-4 w-4" />
+              {t("receptionist.scan_qr") || "Scan QR"}
+            </Button>
+          </div>
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
