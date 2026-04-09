@@ -65,6 +65,7 @@ export default function ReceptionistDetailPage() {
   const [scanResult, setScanResult] = useState<{ status: 'success' | 'error' | 'info', title: string, desc: string } | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const scannerRef = useRef<any>(null);
+  const lastScanRef = useRef<{ text: string; time: number } | null>(null);
   const { toast } = useToast();
 
   const handleParticipantSearch = (val: string) => setParticipantQuery(val);
@@ -276,6 +277,10 @@ export default function ReceptionistDetailPage() {
 
   const handleQrResult = useCallback(
     (scannedText: string) => {
+      const now = Date.now();
+      if (lastScanRef.current && lastScanRef.current.text === scannedText && (now - lastScanRef.current.time) < 4000) return;
+      lastScanRef.current = { text: scannedText, time: now };
+
       let extractedData = scannedText.trim();
 
       // Deteksi jika yang dis-scan itu mengandung struktur link profile (URL backend kita)
