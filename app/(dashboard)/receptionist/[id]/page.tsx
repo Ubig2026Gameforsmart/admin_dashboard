@@ -15,6 +15,7 @@ import {
   ScanLine,
   ChevronDown,
   ChevronUp,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -61,7 +62,7 @@ export default function ReceptionistDetailPage() {
   const [participantQuery, setParticipantQuery] = useState("");
   const [attendanceQuery, setAttendanceQuery] = useState("");
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
-  const [scanResult, setScanResult] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<{ status: 'success' | 'error' | 'info', title: string, desc: string } | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const scannerRef = useRef<any>(null);
   const { toast } = useToast();
@@ -180,7 +181,40 @@ export default function ReceptionistDetailPage() {
       setIsLoading(false);
     }
     fetchData();
+
+    // Setup Realtime Subscription to sync active views automatically
+    const channel = supabase
+      .channel(`comp_participants_${compId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "competition_participants",
+        },
+        (payload) => {
+          const updatedRecord = payload.new;
+          setParticipants((prev) =>
+            prev.map((p) =>
+              p.id === updatedRecord.id
+                ? { ...p, attended: updatedRecord.is_present }
+                : p
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [compId]);
+
+  // Use a ref for participants so the QR scanner callback always has latest data
+  const participantsRef = useRef(participants);
+  useEffect(() => {
+    participantsRef.current = participants;
+  }, [participants]);
 
   // QR Scanner lifecycle
   useEffect(() => {
@@ -213,7 +247,7 @@ export default function ReceptionistDetailPage() {
         await scanner.start(
           { facingMode: "environment" },
           { fps: 15, disableFlip: false },
-          (decodedText: string) => { setScanResult(decodedText); handleQrResult(decodedText); },
+          (decodedText: string) => { handleQrResult(decodedText); },
           () => {}
         );
       } catch {
@@ -221,7 +255,7 @@ export default function ReceptionistDetailPage() {
           await scanner.start(
             { facingMode: "user" },
             { fps: 15, disableFlip: false },
-            (decodedText: string) => { setScanResult(decodedText); handleQrResult(decodedText); },
+            (decodedText: string) => { handleQrResult(decodedText); },
             () => {}
           );
         } catch (err2) {
@@ -242,10 +276,19 @@ export default function ReceptionistDetailPage() {
 
   const handleQrResult = useCallback(
     (scannedText: string) => {
-      // Make scanning case-insensitive and ignore leading '@' if people put them in QR codes
-      const cleanedScan = scannedText.trim().replace(/^@/, "").toLowerCase();
+      let extractedData = scannedText.trim();
 
-      const matched = participants.find(
+      // Deteksi jika yang dis-scan itu mengandung struktur link profile (URL backend kita)
+      if (extractedData.includes("/profile/")) {
+        // Potong/pecah kalimatnya lalu ambil kata paling belakang
+        const parts = extractedData.split("/profile/");
+        extractedData = parts.pop()?.replace(/\//g, "") || extractedData;
+      }
+
+      // Make scanning case-insensitive and ignore leading '@' if people put them in QR codes
+      const cleanedScan = extractedData.replace(/^@/, "").toLowerCase();
+
+      const matched = participantsRef.current.find(
         (p) =>
           p.id.toLowerCase() === cleanedScan ||
           p.userId.toLowerCase() === cleanedScan ||
@@ -254,10 +297,10 @@ export default function ReceptionistDetailPage() {
 
       if (matched) {
         if (matched.attended) {
-          toast({
+          setScanResult({
+            status: 'info',
             title: t("receptionist.already_attended") || "Already Attended",
-            description: `${matched.fullname} (@${matched.username})`,
-            variant: "default",
+            desc: `${matched.fullname} (@${matched.username})`
           });
         } else {
           setParticipants((prev) =>
@@ -273,22 +316,25 @@ export default function ReceptionistDetailPage() {
               if (error) console.error("Error checking in via QR", error);
             });
 
-          toast({
+          setScanResult({
+            status: 'success',
             title: t("receptionist.scan_success") || "Attendance Recorded!",
-            description: `${matched.fullname} (@${matched.username})`,
+            desc: `${matched.fullname} (@${matched.username})`
           });
         }
       } else {
-        toast({
+        const notFoundDesc = t("receptionist.scan_not_found_desc") || "QR code does not match any finalist.";
+        setScanResult({
+          status: 'error',
           title: t("receptionist.scan_not_found") || "Not Found",
-          description:
-            t("receptionist.scan_not_found_desc") ||
-            "QR code does not match any participant.",
-          variant: "destructive",
+          desc: `${notFoundDesc} (${cleanedScan})`
         });
       }
+      
+      // Clear visual message after 4 seconds
+      setTimeout(() => setScanResult(null), 4000);
     },
-    [participants, t, toast]
+    [participants, t]
   );
 
   const toggleAttendance = async (id: string, currentStatus: boolean) => {
@@ -604,11 +650,20 @@ export default function ReceptionistDetailPage() {
 
           {/* Last scan result */}
           {scanResult && (
-            <div className="flex items-center gap-2 p-3 mx-4 mb-4 rounded-lg bg-emerald-500/20 border border-emerald-500/30 shrink-0">
-              <ScanLine className="h-4 w-4 text-emerald-400 shrink-0" />
-              <p className="text-sm text-emerald-300 truncate">
-                {t("receptionist.last_scan") || "Last scan"}: <span className="font-medium">{scanResult}</span>
-              </p>
+            <div className={`p-4 mx-4 mb-6 rounded-xl border shrink-0 animate-in slide-in-from-bottom-4 shadow-xl z-[30] relative
+              ${scanResult.status === 'success' ? 'bg-emerald-500/90 border-emerald-400 text-white' : 
+                scanResult.status === 'info' ? 'bg-blue-500/90 border-blue-400 text-white' : 
+                'bg-red-500/90 border-red-400 text-white'}`}
+            >
+              <div className="flex items-start gap-3">
+                {scanResult.status === 'success' ? <CheckCircle2 className="h-6 w-6 shrink-0" /> :
+                 scanResult.status === 'info' ? <UserCheck className="h-6 w-6 shrink-0" /> :
+                 <AlertCircle className="h-6 w-6 shrink-0" />}
+                <div>
+                  <h3 className="font-bold text-lg">{scanResult.title}</h3>
+                  <p className="text-sm opacity-90">{scanResult.desc}</p>
+                </div>
+              </div>
             </div>
           )}
         </div>
