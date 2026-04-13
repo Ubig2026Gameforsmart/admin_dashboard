@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { getSupabaseServerClient } from "@/lib/supabase-server"
 
 export async function login(formData: FormData) {
@@ -55,7 +55,10 @@ export async function login(formData: FormData) {
     return { error: "Akses ditolak. Hanya admin yang dapat masuk." }
   }
 
-  const isProd = process.env.NODE_ENV === 'production'
+  const headersList = await headers()
+  const host = headersList.get('host') || ''
+  const isGfsDomain = host.endsWith('gameforsmart.com')
+  const isSecure = process.env.NODE_ENV === 'production' || host.includes('vercel.app')
 
   // Set gfs-session for cross-domain SSO
   const cookieStore = await cookies()
@@ -63,12 +66,13 @@ export async function login(formData: FormData) {
   const cookieOptions: any = {
       path: '/',
       maxAge: 604800,
-      secure: isProd,
+      secure: isSecure,
       sameSite: 'lax'
   }
   
-  // Jika di server production (Vercel/Coolify), pastikan mensupport subdomain gameforsmart
-  if (isProd) {
+  // Hanya gunakan domain='.gameforsmart.com' jika benar-benar sedang berjalan di domain tersebut
+  // Ini memastikan testing di URL Vercel (.vercel.app) tetap bisa nyimpan cookie dengan sukses
+  if (isGfsDomain) {
       cookieOptions.domain = '.gameforsmart.com'
   }
 
@@ -85,13 +89,15 @@ export async function logout() {
   const supabase = await getSupabaseServerClient()
   await supabase.auth.signOut()
 
-  const isProd = process.env.NODE_ENV === 'production'
+  const headersList = await headers()
+  const host = headersList.get('host') || ''
+  const isGfsDomain = host.endsWith('gameforsmart.com')
 
   const cookieOptions: any = {
       path: '/',
       maxAge: 0,
   }
-  if (isProd) {
+  if (isGfsDomain) {
       cookieOptions.domain = '.gameforsmart.com'
   }
 
