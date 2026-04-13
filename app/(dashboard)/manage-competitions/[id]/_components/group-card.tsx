@@ -203,9 +203,10 @@ export function GroupCard({
                     ) : (
                       <>
                         {/* Table Header */}
-                        <div className="grid grid-cols-[24px_1fr_70px_70px_28px] gap-2 px-3 py-2 text-[11px] font-medium text-muted-foreground border-b bg-muted/30">
+                        <div className="grid grid-cols-[24px_1fr_90px_70px_70px_28px] gap-2 px-3 py-2 text-[11px] font-medium text-muted-foreground border-b bg-muted/30">
                           <span />
                           <span>{t("comp_detail.table_player")}</span>
+                          <span>{t("table.category") || "Category"}</span>
                           <span className="text-center">{t("comp_detail.table_avg")}</span>
                           <span className="text-center">{t("competition.time") || "Time"}</span>
                           <span />
@@ -215,10 +216,13 @@ export function GroupCard({
                         <div className="max-h-52 overflow-y-auto">
                           {[...members]
                             .sort((a, b) => b.score - a.score)
-                            .map((member, idx) => (
+                            .map((member, idx) => {
+                              const categoryText = dummyPlayers.find((p) => p.id === member.participant_id)?.category;
+                              
+                              return (
                               <div
                                 key={member.id}
-                                className={`grid grid-cols-[24px_1fr_70px_70px_28px] gap-2 items-center px-3 py-1.5 text-xs border-b last:border-b-0 transition-colors ${
+                                className={`grid grid-cols-[24px_1fr_90px_70px_70px_28px] gap-2 items-center px-3 py-1.5 text-xs border-b last:border-b-0 transition-colors ${
                                   member.is_advanced
                                     ? "bg-emerald-500/5"
                                     : groupSelected.includes(member.id)
@@ -241,9 +245,12 @@ export function GroupCard({
                                       {(member.participant?.name || member.participant_id).substring(0, 2).toUpperCase()}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <div className="min-w-0">
-                                    <p className={`font-medium truncate ${member.is_advanced ? "text-emerald-700 dark:text-emerald-400" : ""}`}>
+                                  <div className="flex flex-col min-w-0">
+                                    <p className={`font-medium truncate leading-tight ${member.is_advanced ? "text-emerald-700 dark:text-emerald-400" : ""}`}>
                                       {member.participant?.name || member.participant_id}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground truncate leading-tight">
+                                      @{(member.participant?.name || member.participant_id).toLowerCase().replace(/\s+/g, '')}
                                     </p>
                                   </div>
                                   {idx < 3 && (
@@ -254,6 +261,17 @@ export function GroupCard({
                                     }`}>
                                       {idx + 1}
                                     </span>
+                                  )}
+                                </div>
+
+                                {/* Category */}
+                                <div className="flex items-center">
+                                  {categoryText ? (
+                                    <Badge variant="outline" className="text-[10px] px-2 h-5 text-muted-foreground truncate border-muted-foreground/20 font-medium bg-muted/20">
+                                      {categoryText}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground/50 text-xs">-</span>
                                   )}
                                 </div>
 
@@ -276,7 +294,8 @@ export function GroupCard({
                                   )}
                                 </div>
                               </div>
-                            ))}
+                            );
+                          })}
                         </div>
 
                         {/* Advance Button */}
