@@ -145,9 +145,8 @@ export default function CompetitionDetailPage() {
           .eq("competition_id", compId)
           .order("id", { ascending: true });
 
-        // Fetch Game Sessions for Stats — ONLY sessions linked to this competition!
+        // Fetch Game Sessions for Group Stage Stats — ONLY sessions linked to this competition's groups
         // Collect all session_ids that were stamped into the rounds JSONB
-        let userStats: Record<string, { gamesPlayed: number, totalScore: number }> = {};
         const sessionIds: string[] = [];
         if (dbGroups) {
           dbGroups.forEach((g: any) => {
@@ -167,13 +166,66 @@ export default function CompetitionDetailPage() {
 
           if (!sessionsError && sessionsData) {
             allCompetitionSessions = sessionsData;
-            sessionsData.forEach((session: any) => {
+          }
+        }
+
+        // === QUALIFICATION STATS (separate from Group Stage) ===
+        // Only count sessions that:
+        // 1. Have status = "finished"
+        // 2. Were created AFTER the player's individual registration time (fairness)
+        // 3. Are NOT group stage sessions (excluded by session ID)
+
+        // Build per-player registration time map for lower-bound filtering
+        const playerRegTimes: Record<string, string> = {};
+        participantsData.forEach((p: any) => {
+          if (p.user_id && p.registered_at) {
+            playerRegTimes[p.user_id] = p.registered_at;
+          }
+        });
+
+        let qualStats: Record<string, { gamesPlayed: number; totalScore: number }> = {};
+
+        if (userIds.length > 0) {
+          // Find the earliest player registration time — use as lower bound
+          // to drastically reduce the query result set (avoids Supabase 1000 row limit)
+          const regTimesArray = Object.values(playerRegTimes).filter(Boolean);
+          const earliestRegTime = regTimesArray.length > 0
+            ? regTimesArray.reduce((min, t) => t < min ? t : min)
+            : null;
+
+          // Fetch finished sessions created AFTER the earliest player registered
+          let qualQuery = supabase
+            .from("game_sessions")
+            .select("id, participants, created_at, status")
+            .eq("status", "finished");
+
+          // Apply lower bound to reduce result set
+          if (earliestRegTime) {
+            qualQuery = qualQuery.gte("created_at", earliestRegTime);
+          }
+
+          const { data: qualSessions, error: qualError } = await qualQuery;
+
+          if (!qualError && qualSessions) {
+            qualSessions.forEach((session: any) => {
+              // Skip sessions that belong to group stage rounds
+              if (sessionIds.includes(session.id)) return;
+
+              const sessionCreatedAt = session.created_at;
+
               if (Array.isArray(session.participants)) {
                 session.participants.forEach((p: any) => {
                   if (p.user_id && userIds.includes(p.user_id)) {
-                    if (!userStats[p.user_id]) userStats[p.user_id] = { gamesPlayed: 0, totalScore: 0 };
-                    userStats[p.user_id].gamesPlayed += 1;
-                    userStats[p.user_id].totalScore += p.score || 0;
+                    // Per-player fairness: only count if session was created
+                    // AFTER this specific player registered for the competition
+                    const playerRegTime = playerRegTimes[p.user_id];
+                    if (playerRegTime && sessionCreatedAt < playerRegTime) {
+                      return; // Skip — session was before this player registered
+                    }
+
+                    if (!qualStats[p.user_id]) qualStats[p.user_id] = { gamesPlayed: 0, totalScore: 0 };
+                    qualStats[p.user_id].gamesPlayed += 1;
+                    qualStats[p.user_id].totalScore += p.score || 0;
                   }
                 });
               }
@@ -183,7 +235,7 @@ export default function CompetitionDetailPage() {
 
         const mappedPlayers: DummyPlayer[] = participantsData.map((p: any) => {
           const prof = profilesMap[p.user_id] || {};
-          const stats = userStats[p.user_id] || { gamesPlayed: 0, totalScore: 0 };
+          const stats = qualStats[p.user_id] || { gamesPlayed: 0, totalScore: 0 };
           const avgScore = stats.gamesPlayed > 0 ? Number((stats.totalScore / stats.gamesPlayed).toFixed(1)) : 0;
 
           return {
