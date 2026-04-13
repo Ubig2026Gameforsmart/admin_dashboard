@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, UserPlus } from "lucide-react";
 
@@ -118,11 +119,18 @@ export function AssignParticipantsDialog({
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate leading-tight">{player.name}</p>
-                    <p className="text-[10px] text-muted-foreground truncate leading-tight">@{player.username || player.name.toLowerCase().replace(/\s+/g, '')}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <p className="text-[10px] text-muted-foreground truncate leading-tight">@{player.username || player.name.toLowerCase().replace(/\s+/g, '')}</p>
+                    </div>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {player.avgScore.toFixed(1)} pts
-                  </span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {player.category && (
+                      <Badge variant="outline" className="text-[10px] px-2 h-5 font-medium tracking-wide bg-muted/20 border-muted-foreground/20 text-muted-foreground truncate max-w-[100px]">
+                        {player.category}
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground whitespace-nowrap font-mono">{player.avgScore.toFixed(1)} <span className="text-[10px]">pts</span></span>
+                  </div>
                 </div>
               );
             })

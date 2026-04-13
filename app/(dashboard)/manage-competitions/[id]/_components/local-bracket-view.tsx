@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SearchInput } from "@/components/shared/search-input";
-import { MockQuiz } from "@/types/competition";
+import { MockQuiz, DummyPlayer } from "@/types/competition";
 
 interface LocalBracketViewProps {
   groups: LocalGroup[];
@@ -25,6 +25,7 @@ interface LocalBracketViewProps {
   games?: GameApp[];
   competitionId?: string;
   currentUserId?: string | null;
+  finalists?: DummyPlayer[];
   onManageRounds?: (group: LocalGroup) => void;
 }
 
@@ -35,7 +36,7 @@ function formatTime(seconds: number): string {
   return `${m}m ${s.toString().padStart(2, "0")}s`;
 }
 
-export function LocalBracketView({ groups, quizzes = [], games = [], competitionId, currentUserId, onManageRounds }: LocalBracketViewProps) {
+export function LocalBracketView({ groups, quizzes = [], games = [], competitionId, currentUserId, finalists = [], onManageRounds }: LocalBracketViewProps) {
   const { t } = useTranslation();
   const [selectedGroup, setSelectedGroup] = useState<LocalGroup | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -423,7 +424,7 @@ export function LocalBracketView({ groups, quizzes = [], games = [], competition
       </div>
 
       <Dialog open={!!selectedGroup} onOpenChange={(open) => { if (!open) { setSelectedGroup(null); setSearchQuery(""); } }}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[750px]">
           <DialogHeader className="flex flex-row items-center justify-between pr-6 gap-4">
             <div className="flex flex-col gap-1.5 min-w-0 flex-1">
               <DialogTitle className="flex items-center gap-2 min-w-0">
@@ -549,9 +550,10 @@ export function LocalBracketView({ groups, quizzes = [], games = [], competition
               <p className="text-sm text-muted-foreground text-center py-6">{t("competition.no_members")}</p>
             ) : (
               <div className="border rounded-md overflow-hidden">
-                <div className={`grid ${selectedGroup?.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[1fr_80px_80px_40px]"} gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b bg-muted/30`}>
+                <div className={`grid ${selectedGroup?.stage === "Champion" ? "grid-cols-[32px_1fr_110px_80px_80px_40px]" : "grid-cols-[1fr_110px_80px_80px_40px]"} gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b bg-muted/30`}>
                   {selectedGroup?.stage === "Champion" && <span className="text-center">#</span>}
                   <span>{t("comp_detail.table_player") || "Player"}</span>
+                  <span>{t("table.category") || "Category"}</span>
                   <span className="text-center">{t("comp_detail.table_avg") || "Score"}</span>
                   <span className="text-center">{t("competition.time") || "Time"}</span>
                   <span />
@@ -560,9 +562,11 @@ export function LocalBracketView({ groups, quizzes = [], games = [], competition
                   {[...(selectedGroup?.members || [])]
                     .filter(m => m.playerName.toLowerCase().includes(searchQuery.toLowerCase()))
                     .sort((a, b) => b.score - a.score)
-                    .map((member, idx) => (
+                    .map((member, idx) => {
+                      const categoryText = finalists.find(f => f.id === member.playerId)?.category;
+                      return (
                       <div key={member.playerId}
-                        className={`grid ${selectedGroup?.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[1fr_80px_80px_40px]"} gap-2 items-center px-4 py-2.5 text-sm border-b last:border-b-0 ${
+                        className={`grid ${selectedGroup?.stage === "Champion" ? "grid-cols-[32px_1fr_110px_80px_80px_40px]" : "grid-cols-[1fr_110px_80px_80px_40px]"} gap-2 items-center px-4 py-2.5 text-sm border-b last:border-b-0 ${
                           member.isAdvanced ? "bg-emerald-500/5" : ""
                         }`}>
                         {selectedGroup?.stage === "Champion" && (
@@ -586,6 +590,15 @@ export function LocalBracketView({ groups, quizzes = [], games = [], competition
                             </span>
                           </div>
                         </div>
+                        <div className="flex items-center">
+                          {categoryText ? (
+                            <Badge variant="outline" className="text-[10px] px-2 h-5 text-muted-foreground truncate border-muted-foreground/20 font-medium bg-muted/20">
+                              {categoryText}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground/50 text-xs">-</span>
+                          )}
+                        </div>
                         <div className="flex items-center justify-center gap-1">
                           <span className="font-mono font-medium">{member.score}</span>
                         </div>
@@ -600,7 +613,8 @@ export function LocalBracketView({ groups, quizzes = [], games = [], competition
                           )}
                         </div>
                       </div>
-                    ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -483,7 +483,7 @@ export function PhaseGroupStage({
       )}
 
       <Dialog open={!!detailDialog} onOpenChange={(open) => { if (!open) { setDetailDialog(null); setDetailSearch(""); } }}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[750px]">
           {detailDialog && (() => {
             const group = detailDialog;
             const groupAdvance = advanceSelected[group.id] || [];
@@ -650,7 +650,7 @@ export function PhaseGroupStage({
 
                     return (
                     <div className="border rounded-md overflow-hidden">
-                      <div className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px_28px]"} gap-2 px-4 py-2 items-center text-[11px] font-medium text-muted-foreground border-b bg-muted/30`}>
+                      <div className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_110px_80px_80px_40px]" : "grid-cols-[28px_1fr_110px_80px_80px_40px_28px]"} gap-2 px-4 py-2 items-center text-[11px] font-medium text-muted-foreground border-b bg-muted/30`}>
                         {group.stage === "Champion" ? <span className="text-center">#</span> : (
                           <div className="flex items-center">
                             <Checkbox 
@@ -676,6 +676,7 @@ export function PhaseGroupStage({
                           </div>
                         )}
                         <span>{t("comp_detail.table_player") || "Player"}</span>
+                        <span>{t("table.category") || "Category"}</span>
                         <span className="text-center">{t("comp_detail.table_avg") || "Score"}</span>
                         <span className="text-center">{t("competition.time") || "Time"}</span>
                         <span />
@@ -683,9 +684,12 @@ export function PhaseGroupStage({
                       </div>
                       <div className="max-h-[50vh] overflow-y-auto w-full">
                         {visibleMembers
-                          .map((member, idx) => (
+                          .map((member, idx) => {
+                              const categoryText = finalists.find(f => f.id === member.playerId)?.category;
+                              
+                              return (
                             <div key={member.playerId}
-                              className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_80px_80px_40px]" : "grid-cols-[28px_1fr_80px_80px_40px_28px]"} gap-2 items-center px-4 py-2.5 text-sm border-b last:border-b-0 transition-colors ${
+                              className={`grid ${group.stage === "Champion" ? "grid-cols-[32px_1fr_110px_80px_80px_40px]" : "grid-cols-[28px_1fr_110px_80px_80px_40px_28px]"} gap-2 items-center px-4 py-2.5 text-sm border-b last:border-b-0 transition-colors ${
                                 member.isAdvanced ? "bg-emerald-500/5" : groupAdvance.includes(member.playerId) ? "bg-primary/5" : ""
                               } ${group.stage !== "Champion" ? "cursor-pointer hover:bg-muted/40" : ""}`}
                               onClick={() => {
@@ -744,6 +748,15 @@ export function PhaseGroupStage({
                                   </span>
                                 </div>
                               </div>
+                              <div className="flex items-center">
+                                {categoryText ? (
+                                  <Badge variant="outline" className="text-[10px] px-2 h-5 text-muted-foreground truncate border-muted-foreground/20 font-medium bg-muted/20">
+                                    {categoryText}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground/50 text-xs">-</span>
+                                )}
+                              </div>
                               <div className="flex items-center justify-center gap-1">
                                 <span className="font-mono font-medium">{member.score}</span>
                               </div>
@@ -778,7 +791,8 @@ export function PhaseGroupStage({
                                 </div>
                               )}
                             </div>
-                          ))}
+                          );
+                        })}
                       </div>
                       {groupAdvance.length > 0 && (
                         <div className="px-4 py-3 border-t bg-muted/20">
@@ -934,11 +948,18 @@ export function PhaseGroupStage({
                             {player.name}
                             {showAbsent && <Badge variant="destructive" className="text-[8px] h-4 px-1 py-0 ml-1">Absent</Badge>}
                           </span>
-                          <span className="text-[10px] text-muted-foreground truncate" title={`@${player.name.toLowerCase().replace(/\s+/g, '')}`}>
-                            @{player.name.toLowerCase().replace(/\s+/g, '')}
+                          <span className="text-[10px] text-muted-foreground truncate leading-tight" title={`@${player.username || player.name.toLowerCase().replace(/\s+/g, '')}`}>
+                            @{player.username || player.name.toLowerCase().replace(/\s+/g, '')}
                           </span>
                         </div>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">{player.avgScore.toFixed(1)} pts</span>
+                        <div className="flex items-center gap-3 shrink-0">
+                          {player.category && (
+                            <Badge variant="secondary" className="text-[9px] px-1.5 h-4 font-normal tracking-wide bg-muted/50 border-muted-foreground/20 text-muted-foreground">
+                              {player.category}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground whitespace-nowrap font-mono">{player.avgScore.toFixed(1)} <span className="text-[10px]">pts</span></span>
+                        </div>
                       </div>
                     );
                   })}
@@ -1260,6 +1281,7 @@ export function PhaseGroupStage({
             games={games} 
             competitionId={competitionId}
             currentUserId={currentUserId}
+            finalists={finalists}
             onManageRounds={(g) => { setDetailDialog(null); setTimeout(() => openRoundsDialog(g), 150); }} 
           />
         </>
