@@ -147,6 +147,7 @@ export function PhaseQualification({
               )}
               <TableHead className="w-[50px] text-center">#</TableHead>
               <TableHead>{t("comp_detail.table_player")}</TableHead>
+              <TableHead>{t("Category") || "Category"}</TableHead>
               <TableHead className="text-center">{t("comp_detail.table_play")}</TableHead>
               <TableHead className="text-center">{t("comp_detail.table_avg")}</TableHead>
               <TableHead className="text-center">{t("competition.status_col")}</TableHead>
@@ -156,7 +157,7 @@ export function PhaseQualification({
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={subTab === "paid" ? 7 : 5} className="h-20 text-center text-muted-foreground">
+                <TableCell colSpan={subTab === "paid" ? 8 : 6} className="h-20 text-center text-muted-foreground">
                   {t("comp_detail.no_players")}
                 </TableCell>
               </TableRow>
@@ -216,6 +217,15 @@ export function PhaseQualification({
                           </span>
                         </div>
                       </Link>
+                    </TableCell>
+                    <TableCell>
+                      {player.category ? (
+                        <Badge variant="outline" className="text-[10px] font-medium bg-muted/20">
+                          {player.category}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs font-medium px-2">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1 text-muted-foreground">

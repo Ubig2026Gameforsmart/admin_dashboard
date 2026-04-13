@@ -57,6 +57,7 @@ export function PhasePayment({ players }: PhasePaymentProps) {
             <TableRow>
               <TableHead className="w-[50px] text-center">#</TableHead>
               <TableHead>{t("comp_detail.table_player")}</TableHead>
+              <TableHead>{t("Category") || "Category"}</TableHead>
               <TableHead className="text-center">{t("comp_detail.table_play")}</TableHead>
               <TableHead className="text-center">{t("comp_detail.table_avg")}</TableHead>
               <TableHead className="text-center">{t("competition.payment_status")}</TableHead>
@@ -65,7 +66,7 @@ export function PhasePayment({ players }: PhasePaymentProps) {
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-20 text-center text-muted-foreground">
                   {t("comp_detail.no_players")}
                 </TableCell>
               </TableRow>
@@ -88,6 +89,15 @@ export function PhasePayment({ players }: PhasePaymentProps) {
                         </span>
                       </div>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {player.category ? (
+                      <Badge variant="outline" className="text-[10px] font-medium bg-muted/20">
+                        {player.category}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs font-medium px-2">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-1 text-muted-foreground">

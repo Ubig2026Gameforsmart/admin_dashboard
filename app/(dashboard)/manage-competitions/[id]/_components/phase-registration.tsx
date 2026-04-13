@@ -8,6 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { id as idLocale, enUS } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchInput } from "@/components/shared/search-input";
+import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -51,6 +52,7 @@ export function PhaseRegistration({ players }: PhaseRegistrationProps) {
             <TableRow>
               <TableHead className="w-[50px] text-center">#</TableHead>
               <TableHead>{t("comp_detail.table_player")}</TableHead>
+              <TableHead>{t("Category") || "Category"}</TableHead>
               <TableHead className="text-center">{t("comp_detail.table_play")}</TableHead>
               <TableHead className="text-center">{t("comp_detail.table_avg")}</TableHead>
               <TableHead className="text-right">{t("comp_detail.table_registered")}</TableHead>
@@ -59,7 +61,7 @@ export function PhaseRegistration({ players }: PhaseRegistrationProps) {
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-20 text-center text-muted-foreground">
                   {t("comp_detail.no_players")}
                 </TableCell>
               </TableRow>
@@ -108,6 +110,15 @@ export function PhaseRegistration({ players }: PhaseRegistrationProps) {
                           </span>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {player.category ? (
+                        <Badge variant="outline" className="text-[10px] font-medium bg-muted/20">
+                          {player.category}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs font-medium px-2">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1 text-muted-foreground">
