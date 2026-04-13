@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 import { getSupabaseServerClient } from "@/lib/supabase-server"
 
 export async function login(formData: FormData) {
@@ -32,12 +33,12 @@ export async function login(formData: FormData) {
   }
 
   // Attempt login
-  const { error: authError } = await supabase.auth.signInWithPassword({
+  const { data, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
-  if (authError) {
+  if (authError || !data.session) {
     return { error: "Email/username atau password salah" }
   }
 
@@ -54,6 +55,28 @@ export async function login(formData: FormData) {
     return { error: "Akses ditolak. Hanya admin yang dapat masuk." }
   }
 
+  const isProd = process.env.NODE_ENV === 'production'
+
+  // Set gfs-session for cross-domain SSO
+  const cookieStore = await cookies()
+  
+  const cookieOptions: any = {
+      path: '/',
+      maxAge: 604800,
+      secure: isProd,
+      sameSite: 'lax'
+  }
+  
+  // Jika di server production, gunakan share domain. Jika di localhost, tidak perlu domain string
+  if (isProd) {
+      cookieOptions.domain = '.gameforsmart.com'
+  }
+
+  // PENTING: Format harus pakai pipe (|) bukan JSON, agar sama dengan Astrolearn/NitroQuiz
+  const sessionValue = `${data.session.access_token}|${data.session.refresh_token}`
+  
+  cookieStore.set('gfs-session', sessionValue, cookieOptions)
+
   revalidatePath("/", "layout")
   redirect("/dashboard")
 }
@@ -61,6 +84,20 @@ export async function login(formData: FormData) {
 export async function logout() {
   const supabase = await getSupabaseServerClient()
   await supabase.auth.signOut()
+
+  const isProd = process.env.NODE_ENV === 'production'
+  const cookieOptions: any = {
+      path: '/',
+      maxAge: 0,
+  }
+  if (isProd) {
+      cookieOptions.domain = '.gameforsmart.com'
+  }
+
+  // Remove gfs-session cookie for cross-domain SSO
+  const cookieStore = await cookies()
+  cookieStore.set('gfs-session', '', cookieOptions)
+
   revalidatePath("/", "layout")
   redirect("/login")
 }
