@@ -4,8 +4,8 @@ import { GroupTable } from "./group-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/contexts/dashboard-store";
 import { useEffect, useState } from "react";
-import { fetchCountries, fetchGroupCategories, Country } from "./actions";
-
+import { fetchCountries, fetchGroupCategories } from "./actions";
+import { type Country } from "@/types/group";
 // Placeholder for GroupTableSkeleton, assuming it's defined elsewhere or imported.
 // If not, this would cause a reference error.
 function GroupTableSkeleton() {
