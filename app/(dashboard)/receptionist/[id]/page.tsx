@@ -64,7 +64,7 @@ export default function ReceptionistDetailPage() {
   const [attendanceQuery, setAttendanceQuery] = useState("");
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [scanResult, setScanResult] = useState<{ status: 'success' | 'error' | 'info', title: string, desc: string } | null>(null);
+  const [scanResult, setScanResult] = useState<{ status: 'success' | 'error' | 'info', message: string } | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const scannerRef = useRef<any>(null);
   const lastScanRef = useRef<{ text: string; time: number } | null>(null);
@@ -246,10 +246,25 @@ export default function ReceptionistDetailPage() {
       });
       scannerRef.current = scanner;
 
+      const config = {
+        fps: 15,
+        disableFlip: false,
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          // Use 90% of the container since we are making the container itself a focused box
+          const minEdgePercentage = 0.9; 
+          const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+          const qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+          return {
+            width: qrboxSize,
+            height: qrboxSize
+          };
+        }
+      };
+
       try {
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 15, disableFlip: false },
+          config,
           (decodedText: string) => { handleQrResult(decodedText); },
           () => {}
         );
@@ -257,7 +272,7 @@ export default function ReceptionistDetailPage() {
         try {
           await scanner.start(
             { facingMode: "user" },
-            { fps: 15, disableFlip: false },
+            config,
             (decodedText: string) => { handleQrResult(decodedText); },
             () => {}
           );
@@ -305,9 +320,8 @@ export default function ReceptionistDetailPage() {
       if (matched) {
         if (matched.attended) {
           setScanResult({
-            status: 'info',
-            title: t("receptionist.already_attended") || "Already Attended",
-            desc: `${matched.fullname} (@${matched.username})`
+            status: "info",
+            message: `${t("receptionist.already_attended") || "Already Attended"}: ${matched.fullname}`,
           });
         } else {
           setParticipants((prev) =>
@@ -324,22 +338,20 @@ export default function ReceptionistDetailPage() {
             });
 
           setScanResult({
-            status: 'success',
-            title: t("receptionist.scan_success") || "Attendance Recorded!",
-            desc: `${matched.fullname} (@${matched.username})`
+            status: "success",
+            message: `${t("receptionist.scan_success") || "Attendance Recorded!"} - ${matched.fullname}`,
           });
         }
       } else {
         const notFoundDesc = t("receptionist.scan_not_found_desc") || "QR code does not match any finalist.";
         setScanResult({
-          status: 'error',
-          title: t("receptionist.scan_not_found") || "Not Found",
-          desc: `${notFoundDesc} (${cleanedScan})`
+          status: "error",
+          message: `${notFoundDesc} (${cleanedScan})`,
         });
       }
-      
-      // Clear visual message after 4 seconds
-      setTimeout(() => setScanResult(null), 4000);
+
+      // Hide custom toast after 3 seconds
+      setTimeout(() => setScanResult(null), 3000);
     },
     [participants, t]
   );
@@ -627,8 +639,8 @@ export default function ReceptionistDetailPage() {
             </button>
           </div>
 
-          {/* Camera feed with corner brackets */}
-          <div className="flex-1 relative overflow-hidden bg-black">
+          {/* Camera feed centered in a focused box */}
+          <div className="flex-1 flex items-center justify-center relative bg-black/95">
             <style>{`
               #qr-shaded-region,
               #qr-reader *[style*="border"] {
@@ -640,23 +652,22 @@ export default function ReceptionistDetailPage() {
                 z-index: 10 !important;
                 border: none !important;
                 box-shadow: none !important;
-                position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
                 width: 100% !important;
                 height: 100% !important;
                 object-fit: cover !important;
               }
             `}</style>
             
-            <div id="qr-reader" className="absolute inset-0 w-full h-full" />
+            <div className="relative w-[85vw] h-[85vw] max-w-[400px] max-h-[400px] md:max-w-[450px] md:max-h-[450px] overflow-hidden rounded-2xl bg-zinc-900/50">
+              <div id="qr-reader" className="absolute inset-0 w-full h-full" />
 
-            {/* Corner brackets */}
-            <div className="absolute inset-6 pointer-events-none overflow-hidden z-[20]">
-              <div className="absolute top-0 left-0" style={{ width: "40px", height: "40px", borderTop: "4px solid #34d399", borderLeft: "4px solid #34d399", borderTopLeftRadius: "12px" }} />
-              <div className="absolute top-0 right-0" style={{ width: "40px", height: "40px", borderTop: "4px solid #34d399", borderRight: "4px solid #34d399", borderTopRightRadius: "12px" }} />
-              <div className="absolute bottom-0 left-0" style={{ width: "40px", height: "40px", borderBottom: "4px solid #34d399", borderLeft: "4px solid #34d399", borderBottomLeftRadius: "12px" }} />
-              <div className="absolute bottom-0 right-0" style={{ width: "40px", height: "40px", borderBottom: "4px solid #34d399", borderRight: "4px solid #34d399", borderBottomRightRadius: "12px" }} />
+              {/* Corner brackets */}
+              <div className="absolute inset-4 pointer-events-none z-[20]">
+                <div className="absolute top-0 left-0" style={{ width: "40px", height: "40px", borderTop: "4px solid #34d399", borderLeft: "4px solid #34d399", borderTopLeftRadius: "12px" }} />
+                <div className="absolute top-0 right-0" style={{ width: "40px", height: "40px", borderTop: "4px solid #34d399", borderRight: "4px solid #34d399", borderTopRightRadius: "12px" }} />
+                <div className="absolute bottom-0 left-0" style={{ width: "40px", height: "40px", borderBottom: "4px solid #34d399", borderLeft: "4px solid #34d399", borderBottomLeftRadius: "12px" }} />
+                <div className="absolute bottom-0 right-0" style={{ width: "40px", height: "40px", borderBottom: "4px solid #34d399", borderRight: "4px solid #34d399", borderBottomRightRadius: "12px" }} />
+              </div>
             </div>
 
             {/* Bottom label */}
@@ -665,26 +676,25 @@ export default function ReceptionistDetailPage() {
                 {t("receptionist.point_camera") || "Point camera at QR code"}
               </span>
             </div>
-          </div>
 
-          {/* Last scan result */}
+          {/* Minimalist In-Scanner Toast */}
           {scanResult && (
-            <div className={`p-4 mx-4 mb-6 rounded-xl border shrink-0 animate-in slide-in-from-bottom-4 shadow-xl z-[30] relative
-              ${scanResult.status === 'success' ? 'bg-emerald-500/90 border-emerald-400 text-white' : 
-                scanResult.status === 'info' ? 'bg-blue-500/90 border-blue-400 text-white' : 
-                'bg-red-500/90 border-red-400 text-white'}`}
+            <div className={`absolute bottom-20 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2 px-4 py-2.5 rounded-full shadow-2xl animate-in slide-in-from-bottom-4 fade-in duration-300 pointer-events-none max-w-[90vw] whitespace-nowrap
+              ${scanResult.status === 'success' ? 'bg-emerald-500 text-white' : 
+                scanResult.status === 'info' ? 'bg-blue-500 text-white' : 
+                'bg-red-500 text-white'}`}
             >
-              <div className="flex items-start gap-3">
-                {scanResult.status === 'success' ? <CheckCircle2 className="h-6 w-6 shrink-0" /> :
-                 scanResult.status === 'info' ? <UserCheck className="h-6 w-6 shrink-0" /> :
-                 <AlertCircle className="h-6 w-6 shrink-0" />}
-                <div>
-                  <h3 className="font-bold text-lg">{scanResult.title}</h3>
-                  <p className="text-sm opacity-90">{scanResult.desc}</p>
-                </div>
+              <div className="shrink-0 bg-white/20 rounded-full p-0.5">
+                {scanResult.status === 'success' ? <CheckCircle2 className="h-4 w-4" /> :
+                 scanResult.status === 'info' ? <UserCheck className="h-4 w-4" /> :
+                 <AlertCircle className="h-4 w-4" />}
               </div>
+              <span className="text-sm font-medium tracking-wide truncate">
+                {scanResult.message}
+              </span>
             </div>
           )}
+          </div>
         </div>
       )}
     </div>
