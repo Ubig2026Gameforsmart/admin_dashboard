@@ -32,12 +32,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  type ReportWithMessages,
-  type Message,
   fetchReportById,
   sendMessageAction,
   deleteMessageAction,
 } from "../actions";
+import { type ReportWithMessages, type Message } from "@/types/report";
 import { useTranslation } from "@/lib/i18n";
 
 interface PageProps {

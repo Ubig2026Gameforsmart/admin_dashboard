@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 
 import { Search } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { DataTable } from "@/components/dashboard/data-table";
-import { SearchInput } from "@/components/shared/search-input";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import {
@@ -39,6 +39,7 @@ export function StateTable({
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation();
 
+  const [searchInput, setSearchInput] = useState(searchQuery);
   const [selectedState, setSelectedState] = useState<State | null>(null);
   const [loadingState, setLoadingState] = useState(false);
 
@@ -63,6 +64,15 @@ export function StateTable({
     });
   };
 
+  const handleSearch = () => {
+    updateUrl({ search: searchInput, page: 1 });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
 
   const handleCountryChange = (value: string) => {
     updateUrl({ country: value, page: 1 });
@@ -119,7 +129,7 @@ export function StateTable({
       label: t("master.native_name"),
       render: (value: unknown) => (
         <span className="text-muted-foreground">
-          {(value as string) || "—"}
+          {(value as string) || "ΓÇö"}
         </span>
       ),
     },
@@ -127,7 +137,7 @@ export function StateTable({
       key: "country_code",
       label: t("groups.country_label"),
       render: (value: unknown) => (
-        <span className="font-mono text-sm">{(value as string) || "—"}</span>
+        <span className="font-mono text-sm">{(value as string) || "ΓÇö"}</span>
       ),
     },
     {
@@ -135,7 +145,7 @@ export function StateTable({
       label: t("master.state_code"),
       render: (value: unknown) => (
         <span className="font-mono text-sm font-medium">
-          {(value as string) || "—"}
+          {(value as string) || "ΓÇö"}
         </span>
       ),
     },
@@ -144,7 +154,7 @@ export function StateTable({
       label: t("master.type"),
       render: (value: unknown) => (
         <span className="text-sm text-muted-foreground">
-          {(value as string) || "—"}
+          {(value as string) || "ΓÇö"}
         </span>
       ),
     },
@@ -169,12 +179,22 @@ export function StateTable({
         </div>
 
         <div className="flex items-center gap-3">
-          <SearchInput
-            placeholder={t("groups.search_state")}
-            value={searchQuery}
-            onSearch={(val) => updateUrl({ search: val, page: 1 })}
-            className="w-64 bg-background border-border"
-          />
+          <div className="relative">
+            <Input
+              placeholder={t("groups.search_state")}
+              className="pr-10 w-64 bg-background border-border"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <button
+              onClick={handleSearch}
+              disabled={isPending}
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              <Search className="h-3.5 w-3.5" />
+            </button>
+          </div>
 
           <Combobox
             options={countryOptions}
@@ -246,7 +266,7 @@ function DetailItem({
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-medium">{value || "—"}</p>
+      <p className="font-medium">{value || "ΓÇö"}</p>
     </div>
   );
 }

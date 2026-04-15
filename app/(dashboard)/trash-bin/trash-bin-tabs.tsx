@@ -6,7 +6,7 @@ import { BookOpen, Users, User, Trash2 } from "lucide-react";
 import { TrashQuizTable } from "./trash-quiz-table";
 import { TrashUserTable } from "./trash-user-table";
 import { TrashGroupTable } from "./trash-group-table";
-import type { DeletedQuiz, DeletedUser, DeletedGroup } from "./actions";
+import type { DeletedQuiz, DeletedUser, DeletedGroup } from "@/types/trash-bin";
 import { useTranslation } from "@/lib/i18n";
 
 interface TrashBinTabsProps {

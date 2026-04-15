@@ -1,30 +1,7 @@
 "use server"
 
 import { getSupabaseServerClient } from "@/lib/supabase-server"
-
-export interface Profile {
-  id: string
-  username?: string | null
-  email?: string | null
-  fullname?: string | null
-  avatar_url?: string | null
-  role?: string | null
-  last_active?: string | null
-  is_blocked?: boolean | null
-  organization?: string | null
-  phone?: string | null
-  address?: string | null
-  birthdate?: string | null
-  following_count?: number
-  followers_count?: number
-  friends_count?: number
-  country_id?: number | null
-  state_id?: number | null
-  city_id?: number | null
-  country?: { id: number; name: string; latitude: number | null; longitude: number | null } | null
-  state?: { id: number; name: string; latitude: number | null; longitude: number | null } | null
-  city?: { id: number; name: string; latitude: number | null; longitude: number | null } | null
-}
+import type { Profile, UserQuiz, CreatedQuiz } from "@/types/profile"
 
 export async function fetchProfileById(id: string): Promise<{ data: Profile | null; error: string | null }> {
   const supabase = await getSupabaseServerClient()
@@ -125,12 +102,7 @@ export async function fetchProfileById(id: string): Promise<{ data: Profile | nu
   }
 }
 
-export interface UserQuiz {
-  id: string
-  title: string
-  play_count: number
-  avg_score: number
-}
+
 
 export async function fetchUserQuizzes(userId: string): Promise<{ data: UserQuiz[]; error: string | null }> {
   const supabase = await getSupabaseServerClient()
@@ -199,13 +171,7 @@ export async function fetchUserQuizzes(userId: string): Promise<{ data: UserQuiz
   return { data: result, error: null }
 }
 
-export interface CreatedQuiz {
-  id: string
-  title: string
-  category: string | null
-  question_count: number
-  created_at: string | null
-}
+
 
 export async function fetchCreatedQuizzes(userId: string): Promise<{ data: CreatedQuiz[]; error: string | null }> {
   const supabase = await getSupabaseServerClient()

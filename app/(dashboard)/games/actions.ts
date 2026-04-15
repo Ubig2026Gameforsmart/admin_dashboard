@@ -2,16 +2,7 @@
 
 import { getSupabaseServerClient } from "@/lib/supabase-server"
 
-export interface GameApplication {
-    name: string
-    total_sessions: number
-    finished_sessions: number
-    active_sessions: number
-    unique_hosts: number
-    total_players: number
-    first_session: string | null
-    last_session: string | null
-}
+import { type GameApplication } from "@/types/game"
 
 export async function fetchGameApplications(
     startDate?: string,

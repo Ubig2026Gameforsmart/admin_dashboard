@@ -14,26 +14,10 @@ import {
   GameDashboardClient,
   GameDashboardSkeleton,
 } from "./game-dashboard-client";
+import { type GameDashboardData } from "@/types/game-dashboard";
 
 interface GameDashboardWrapperProps {
-  initialData: {
-    kpi: {
-      totalSessions: number;
-      totalParticipants: number;
-      avgDuration: number;
-      avgQuestions: number;
-    };
-    charts: {
-      trend: { date: string; count: number }[];
-      apps: { name: string; value: number }[];
-      topHosts: any[];
-      recentActivity: any[];
-      topCategories: { name: string; count: number }[];
-      topStates: { name: string; count: number }[];
-      topCities: { name: string; count: number }[];
-      topCountries: { name: string; count: number }[];
-    };
-  } | null;
+  initialData: GameDashboardData | null;
 }
 
 export function GameDashboardWrapper({

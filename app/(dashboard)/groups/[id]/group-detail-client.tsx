@@ -68,11 +68,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  type GroupDetail,
-  type GroupMember,
   removeGroupMember,
   updateMemberRole,
 } from "../actions";
+import { type GroupDetail, type GroupMember } from "@/types/group";
 import { useTranslation } from "@/lib/i18n";
 
 interface GroupDetailClientProps {

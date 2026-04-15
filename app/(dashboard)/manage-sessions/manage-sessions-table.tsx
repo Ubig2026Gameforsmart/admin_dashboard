@@ -1,23 +1,14 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { format, formatDistanceToNow } from "date-fns";
-import { enUS } from "date-fns/locale";
 import {
   Trash2,
   CheckSquare,
   AlertTriangle,
   RefreshCw,
-  Users,
-  Timer,
-  Globe,
   Search,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
@@ -29,280 +20,56 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DataTable } from "@/components/dashboard/data-table";
+import { type StaleSession } from "@/types/manage-session";
 
-import { clearSessions, type StaleSession } from "./actions";
+import { useManageSessionsTable } from "./_hooks/use-manage-sessions-table";
+import { getManageSessionsColumns } from "./_components/manage-sessions-columns";
 
 interface ManageSessionsTableProps {
   initialData: StaleSession[];
   initialError: string | null;
 }
 
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
-
 export function ManageSessionsTable({
   initialData,
   initialError,
 }: ManageSessionsTableProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [clearMode, setClearMode] = useState<"selected" | "all">("selected");
-  const [clearResult, setClearResult] = useState<{
-    cleared: number;
-    error: string | null;
-  } | null>(null);
+  const {
+    isPending,
+    selected,
+    showConfirm,
+    setShowConfirm,
+    clearMode,
+    clearResult,
+    setClearResult,
+    searchInput,
+    setSearchInput,
+    filteredData,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedData,
+    isPageSelected,
+    toggleSelect,
+    toggleSelectPage,
+    handleClear,
+    confirmClear,
+    handleRefresh,
+    handleSearch,
+    handleKeyDown,
+  } = useManageSessionsTable(initialData);
 
-  // Auto-dismiss clear result after 5 seconds
-  useEffect(() => {
-    if (clearResult) {
-      const timer = setTimeout(() => {
-        setClearResult(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [clearResult]);
-  
-  // Client-side filtering state
-  const [searchInput, setSearchInput] = useState("");
-  const [activeSearchQuery, setActiveSearchQuery] = useState("");
-  const [filteredData, setFilteredData] = useState(initialData);
-
-  const ITEMS_PER_PAGE = 15;
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // Sync initialData
-  useEffect(() => {
-    setFilteredData(initialData);
-    setCurrentPage(1);
-  }, [initialData]);
-
-  // Apply filters
-  useEffect(() => {
-    let result = initialData;
-
-    if (activeSearchQuery) {
-      const lowerQuery = activeSearchQuery.toLowerCase();
-      result = result.filter(
-        (item) =>
-          item.quiz_title.toLowerCase().includes(lowerQuery) ||
-          item.host_name.toLowerCase().includes(lowerQuery) ||
-          item.game_pin.includes(lowerQuery)
-      );
-    }
-
-    setFilteredData(result);
-    setCurrentPage(1); // Reset to first page on filter change
-  }, [activeSearchQuery, initialData]);
-
-  const handleSearch = () => {
-    setActiveSearchQuery(searchInput);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+  const columns = getManageSessionsColumns(
+    isPageSelected,
+    selected,
+    toggleSelectPage,
+    toggleSelect
   );
 
-  const isPageSelected =
-    paginatedData.length > 0 &&
-    paginatedData.every((item) => selected.has(item.id));
-
-  const toggleSelect = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleSelectPage = () => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (isPageSelected) {
-        // Deselect all on this page
-        paginatedData.forEach((item) => next.delete(item.id));
-      } else {
-        // Select all on this page
-        paginatedData.forEach((item) => next.add(item.id));
-      }
-      return next;
-    });
-  };
-
-  const handleClear = (mode: "selected" | "all") => {
-    setClearMode(mode);
-    setShowConfirm(true);
-  };
-
-  const confirmClear = async () => {
-    setShowConfirm(false);
-    
-    // Clear visible/filtered items if "All" is selected, or specifically selected items
-    const idsToClear =
-      clearMode === "all"
-        ? filteredData.map((s) => s.id)
-        : Array.from(selected);
-
-    if (idsToClear.length === 0) return;
-
-    startTransition(async () => {
-      const result = await clearSessions(idsToClear);
-      setClearResult(result);
-      setSelected(new Set());
-      router.refresh();
-    });
-  };
-
-  const handleRefresh = () => {
-    startTransition(() => {
-      router.refresh();
-    });
-  };
-
-  const columns = [
-    {
-      key: "quiz_title",
-      label: "Quiz",
-      render: (value: unknown, row: Record<string, unknown>) => (
-        <div className="flex flex-col min-w-0">
-          <span
-            className="font-medium truncate max-w-[200px]"
-            title={value as string}
-          >
-            {value as string}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            PIN: {row.game_pin as string}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: "host",
-      label: "Host",
-      render: (_: unknown, row: Record<string, unknown>) => (
-            <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8">
-                <AvatarImage src={row.avatar_url as string} />
-                <AvatarFallback className="text-[10px]">
-                {(row.host_name as string).substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-            </Avatar>
-            <span className="truncate max-w-[150px] text-sm font-medium">
-                {row.host_name as string}
-            </span>
-            </div>
-      ),
-    },
-    {
-      key: "status",
-      label: "Status",
-      render: () => (
-        <Badge
-          variant="outline"
-          className="bg-yellow-500/15 text-yellow-600 border-yellow-200 hover:bg-yellow-500/25 dark:text-yellow-400 dark:border-yellow-800 capitalize"
-        >
-          Waiting
-        </Badge>
-      ),
-    },
-    {
-      key: "application",
-      label: "Application",
-      render: (value: unknown) => (
-        <div className="flex items-center gap-1.5">
-          <Globe className="h-4 w-4 text-muted-foreground" />
-          <span className="capitalize text-sm">
-            {(value as string).replace(/\.com$/i, "")}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: "waiting_duration_minutes",
-      label: "Duration",
-      render: (value: unknown) => (
-        <div className="flex items-center gap-1.5 text-sm">
-          <Timer className="h-4 w-4 text-muted-foreground" />
-          <span>{formatDuration(value as number)}</span>
-        </div>
-      ),
-    },
-    {
-      key: "participant_count",
-      label: "Players",
-      render: (value: unknown) => (
-        <div className="flex items-center gap-1.5 text-sm">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <span>{value as number}</span>
-        </div>
-      ),
-    },
-    {
-      key: "created_at",
-      label: "Created",
-      render: (value: unknown) => {
-        const date = new Date(value as string);
-        const fullDate = format(date, "EEEE, d MMMM yyyy 'at' HH:mm", { locale: enUS });
-        
-        return (
-          <span
-            className="text-sm font-medium whitespace-nowrap cursor-help decoration-dashed decoration-muted-foreground/50 underline-offset-4 hover:underline"
-            title={fullDate}
-            suppressHydrationWarning
-          >
-            {formatDistanceToNow(date, { addSuffix: true })}
-          </span>
-        );
-      },
-    },
-    {
-      key: "select",
-      label: (
-        <div className="flex justify-center pr-4">
-          <Checkbox
-            checked={isPageSelected}
-            onCheckedChange={toggleSelectPage}
-            aria-label="Select all on page"
-            className="h-4 w-4 border-muted-foreground/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary translate-y-[2px]"
-          />
-        </div>
-      ) as unknown as string,
-      render: (_: unknown, row: Record<string, unknown>) => (
-        <div className="flex justify-center pr-4">
-          <Checkbox
-            checked={selected.has(row.id as string)}
-            onCheckedChange={() => toggleSelect(row.id as string)}
-            onClick={(e) => e.stopPropagation()}
-            aria-label="Select row"
-            className="h-4 w-4 border-muted-foreground/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-          />
-        </div>
-      ),
-    },
-  ];
-
   // Convert paginatedData to generic Record for DataTable
-  const tableData = paginatedData.map(item => ({
-      ...item,
+  const tableData = paginatedData.map((item) => ({
+    ...item,
   })) as unknown as Record<string, unknown>[];
 
   return (
@@ -322,50 +89,50 @@ export function ManageSessionsTable({
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <button 
+            <button
               onClick={handleSearch}
               className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-               <Search className="h-3.5 w-3.5" />
+              <Search className="h-3.5 w-3.5" />
             </button>
           </div>
-        
+
           <div className="flex items-center gap-2">
             {filteredData.length > 0 && (
-                <>
+              <>
                 <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleClear("selected")}
-                    disabled={selected.size === 0 || isPending}
-                    className="text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/10"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleClear("selected")}
+                  disabled={selected.size === 0 || isPending}
+                  className="text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/10"
                 >
-                    <Trash2 className="h-4 w-4 mr-1.5" />
-                    Clear ({selected.size})
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Clear ({selected.size})
                 </Button>
                 <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleClear("all")}
-                    disabled={isPending}
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleClear("all")}
+                  disabled={isPending}
                 >
-                    <Trash2 className="h-4 w-4 mr-1.5" />
-                    Clear All
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Clear All
                 </Button>
-                </>
+              </>
             )}
             <Button
-                variant="outline"
-                size="icon"
-                onClick={handleRefresh}
-                disabled={isPending}
-                title="Refresh"
-                className="h-9 w-9"
+              variant="outline"
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isPending}
+              title="Refresh"
+              className="h-9 w-9"
             >
-                <RefreshCw
+              <RefreshCw
                 className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`}
-                />
-                <span className="sr-only">Refresh</span>
+              />
+              <span className="sr-only">Refresh</span>
             </Button>
           </div>
         </div>
@@ -408,14 +175,13 @@ export function ManageSessionsTable({
       )}
 
       {/* Sessions Table */}
-        <DataTable
-            columns={columns as any}
-            data={tableData}
-            currentPage={currentPage}
-            totalPages={totalPages || 1}
-            onPageChange={(page) => setCurrentPage(page)}
-            // onRowClick={(row) => toggleSelect(row.id as string)} // Optional: click row to select
-        />
+      <DataTable
+        columns={columns as any}
+        data={tableData}
+        currentPage={currentPage}
+        totalPages={totalPages || 1}
+        onPageChange={(page) => setCurrentPage(page)}
+      />
 
       {/* Confirm Dialog */}
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>

@@ -9,11 +9,12 @@ import React, {
 } from "react";
 import { Profile } from "@/app/(dashboard)/users/actions";
 import { Quiz } from "@/app/(dashboard)/quizzes/actions";
-import { Report } from "@/app/(dashboard)/reports/actions";
+import { Report } from "@/types/report";
 import { getAllProfiles } from "@/app/(dashboard)/users/actions";
 import { getAllQuizzes } from "@/app/(dashboard)/quizzes/actions";
 import { getAllReports } from "@/app/(dashboard)/reports/actions";
-import { getAllGroups, Group } from "@/app/(dashboard)/groups/actions";
+import { getAllGroups } from "@/app/(dashboard)/groups/actions";
+import { Group } from "@/types/group";
 
 interface DashboardData {
   users: Profile[];

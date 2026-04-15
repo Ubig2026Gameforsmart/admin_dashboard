@@ -1,22 +1,15 @@
 "use server";
 
-import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import { revalidatePath } from "next/cache";
+import { RejectionTemplateService } from "@/lib/services/rejection-template-service";
 
 export async function getTemplates() {
-  const supabase = getSupabaseAdminClient();
-
-  const { data, error } = await supabase
-    .from("rejection_templates")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
+  try {
+    return await RejectionTemplateService.getTemplates();
+  } catch (error: any) {
     console.error("Error fetching templates:", error);
     return [];
   }
-
-  return data;
 }
 
 export async function createTemplate(formData: FormData) {
@@ -28,22 +21,19 @@ export async function createTemplate(formData: FormData) {
     return { error: "Both reasons are required" };
   }
 
-  const supabase = getSupabaseAdminClient();
-
-  const { error } = await supabase.from("rejection_templates").insert({
-    type,
-    reason_en,
-    reason_id,
-    is_active: true,
-  });
-
-  if (error) {
-    console.error("Error creating template:", error);
+  try {
+    await RejectionTemplateService.createTemplate({
+      type,
+      reason_en,
+      reason_id,
+      is_active: true,
+    });
+    
+    revalidatePath("/rejection-templates");
+    return { success: true };
+  } catch (error: any) {
     return { error: error.message };
   }
-
-  revalidatePath("/rejection-templates");
-  return { success: true };
 }
 
 export async function updateTemplate(formData: FormData) {
@@ -57,61 +47,44 @@ export async function updateTemplate(formData: FormData) {
     return { error: "ID and both reasons are required" };
   }
 
-  const supabase = getSupabaseAdminClient();
-
-  const { error } = await supabase
-    .from("rejection_templates")
-    .update({
+  try {
+    await RejectionTemplateService.updateTemplate({
+      id,
       type,
       reason_en,
       reason_id,
       is_active,
-    })
-    .eq("id", id);
-
-  if (error) {
-    console.error("Error updating template:", error);
+    });
+    
+    revalidatePath("/rejection-templates");
+    return { success: true };
+  } catch (error: any) {
     return { error: error.message };
   }
-
-  revalidatePath("/rejection-templates");
-  return { success: true };
 }
 
 export async function deleteTemplate(id: string) {
   if (!id) return { error: "ID is required" };
 
-  const supabase = getSupabaseAdminClient();
-
-  const { error } = await supabase
-    .from("rejection_templates")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    console.error("Error deleting template:", error);
+  try {
+    await RejectionTemplateService.deleteTemplate(id);
+    
+    revalidatePath("/rejection-templates");
+    return { success: true };
+  } catch (error: any) {
     return { error: error.message };
   }
-
-  revalidatePath("/rejection-templates");
-  return { success: true };
 }
 
 export async function toggleTemplateStatus(id: string, is_active: boolean) {
   if (!id) return { error: "ID is required" };
 
-  const supabase = getSupabaseAdminClient();
-
-  const { error } = await supabase
-    .from("rejection_templates")
-    .update({ is_active })
-    .eq("id", id);
-
-  if (error) {
-    console.error("Error toggling template status:", error);
+  try {
+    await RejectionTemplateService.toggleTemplateStatus(id, is_active);
+    
+    revalidatePath("/rejection-templates");
+    return { success: true };
+  } catch (error: any) {
     return { error: error.message };
   }
-
-  revalidatePath("/rejection-templates");
-  return { success: true };
 }

@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 
 import { Search } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { DataTable } from "@/components/dashboard/data-table";
-import { SearchInput } from "@/components/shared/search-input";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import {
@@ -39,6 +39,7 @@ export function CountryTable({
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation();
 
+  const [searchInput, setSearchInput] = useState(searchQuery);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [loadingCountry, setLoadingCountry] = useState(false);
 
@@ -61,6 +62,16 @@ export function CountryTable({
     startTransition(() => {
       router.push(`?${newParams.toString()}`);
     });
+  };
+
+  const handleSearch = () => {
+    updateUrl({ search: searchInput, page: 1 });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
   };
 
   const handleRegionChange = (value: string) => {
@@ -114,7 +125,7 @@ export function CountryTable({
       label: t("master.native_name"),
       render: (value: unknown) => (
         <span className="text-muted-foreground">
-          {(value as string) || "—"}
+          {(value as string) || "ΓÇö"}
         </span>
       ),
     },
@@ -122,7 +133,7 @@ export function CountryTable({
       key: "region",
       label: t("table.region"),
       render: (value: unknown) => (
-        <span className="text-sm">{(value as string) || "—"}</span>
+        <span className="text-sm">{(value as string) || "ΓÇö"}</span>
       ),
     },
     {
@@ -130,7 +141,7 @@ export function CountryTable({
       label: t("table.code"),
       render: (value: unknown) => (
         <span className="font-mono text-sm font-medium">
-          {(value as string) || "—"}
+          {(value as string) || "ΓÇö"}
         </span>
       ),
     },
@@ -154,12 +165,22 @@ export function CountryTable({
         </div>
 
         <div className="flex items-center gap-3">
-          <SearchInput
-            placeholder={t("groups.search_country")}
-            value={searchQuery}
-            onSearch={(val) => updateUrl({ search: val, page: 1 })}
-            className="w-64 bg-background border-border"
-          />
+          <div className="relative">
+            <Input
+              placeholder={t("groups.search_country")}
+              className="pr-10 w-64 bg-background border-border"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <button
+              onClick={handleSearch}
+              disabled={isPending}
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              <Search className="h-3.5 w-3.5" />
+            </button>
+          </div>
 
           <Combobox
             options={regionOptions}
@@ -259,7 +280,7 @@ function DetailItem({
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-medium">{value || "—"}</p>
+      <p className="font-medium">{value || "ΓÇö"}</p>
     </div>
   );
 }

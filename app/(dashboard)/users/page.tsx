@@ -1,6 +1,6 @@
 "use client";
 
-import { UserTable } from "./user-table";
+import { UserTable } from "./_components/user-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/contexts/dashboard-store";
 

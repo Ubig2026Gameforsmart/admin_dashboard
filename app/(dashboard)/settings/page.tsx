@@ -5,16 +5,14 @@ import { ActionCard } from "@/components/dashboard/action-card";
 import { SectionHeader } from "@/components/dashboard/section-header";
 import {
   User,
-  Sliders,
   Shield,
   CheckCircle,
   AlertTriangle,
   Settings,
   Palette,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n";
+import { SystemStatusCard } from "./_components/system-status-card";
 
 export default function SettingsDashboardPage() {
   const { t } = useTranslation();
@@ -71,52 +69,11 @@ export default function SettingsDashboardPage() {
       </div>
 
       {/* System Status */}
-      <Card className="border-border bg-card">
-        <CardHeader>
-          <CardTitle className="text-foreground">
-            {t("settings.system_status")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            {systemStatus.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.status === "Active";
-              return (
-                <div
-                  key={item.name}
-                  className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      className={`h-5 w-5 ${
-                        isActive
-                          ? "text-[var(--success)]"
-                          : "text-[var(--warning)]"
-                      }`}
-                    />
-                    <span className="font-medium text-foreground">
-                      {item.name}
-                    </span>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      isActive
-                        ? "bg-[var(--success)]/20 text-[var(--success)] border-[var(--success)]/30"
-                        : "bg-[var(--warning)]/20 text-[var(--warning)] border-[var(--warning)]/30"
-                    }
-                  >
-                    {item.status === "Active"
-                      ? t("stats.active")
-                      : t("settings.status.warning") || item.status}
-                  </Badge>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      <SystemStatusCard
+        items={systemStatus}
+        title={t("settings.system_status")}
+        t={t}
+      />
 
       {/* Quick Access */}
       <div>
