@@ -317,7 +317,7 @@ export default function CompetitionDetailPage() {
 
                 if (exactStats && exactStats.gamesPlayed > 0) {
                   useScore = Number((exactStats.totalScore / exactStats.gamesPlayed).toFixed(1));
-                  useTime = exactStats.totalTime;
+                  useTime = Math.round(exactStats.totalTime / exactStats.gamesPlayed);
                 }
 
                 return {
