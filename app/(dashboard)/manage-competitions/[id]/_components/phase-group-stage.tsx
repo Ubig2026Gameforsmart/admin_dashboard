@@ -69,6 +69,9 @@ export interface RoundConfig {
   round: number;
   quiz_id: string;
   game_id: string;
+  session_id?: string;
+  game_pin?: string;
+  lobby_id?: string;
 }
 
 export interface LocalGroup {
@@ -116,7 +119,7 @@ export function PhaseGroupStage({
   const [detailDialog, setDetailDialog] = useState<LocalGroup | null>(null);
   const [detailSearch, setDetailSearch] = useState("");
   const [assignDialog, setAssignDialog] = useState<LocalGroup | null>(null);
-  const [roundsDialog, setRoundsDialog] = useState<{ group: LocalGroup, rounds: { quizId: string, gameId: string }[] } | null>(null);
+  const [roundsDialog, setRoundsDialog] = useState<{ group: LocalGroup, rounds: { quizId: string, gameId: string, session_id?: string, game_pin?: string, lobby_id?: string }[] } | null>(null);
   const [assignSearch, setAssignSearch] = useState("");
   const [assignSelected, setAssignSelected] = useState<string[]>([]);
   const [advanceSelected, setAdvanceSelected] = useState<Record<string, string[]>>({});
@@ -225,7 +228,7 @@ export function PhaseGroupStage({
 
   const openRoundsDialog = (group: LocalGroup) => {
     const rounds = group.rounds.length > 0
-      ? group.rounds.map(r => ({ quizId: r.quiz_id || "", gameId: r.game_id || "" }))
+      ? group.rounds.map(r => ({ quizId: r.quiz_id || "", gameId: r.game_id || "", session_id: r.session_id, game_pin: r.game_pin, lobby_id: r.lobby_id }))
       : [{ quizId: "", gameId: "" }];
     setRoundsDialog({ group, rounds });
   };
@@ -233,12 +236,19 @@ export function PhaseGroupStage({
   const handleSaveRounds = () => {
     if (!roundsDialog) return;
     
-    // Convert dialog rounds to RoundConfig[], trimming empty trailing rounds
-    let newRounds: RoundConfig[] = roundsDialog.rounds.map((r, idx) => ({
-      round: idx + 1,
-      quiz_id: r.quizId,
-      game_id: r.gameId,
-    }));
+    // Convert dialog rounds to RoundConfig[], preserving session_id/game_pin/lobby_id
+    let newRounds: RoundConfig[] = roundsDialog.rounds.map((r, idx) => {
+      const roundConfig: RoundConfig = {
+        round: idx + 1,
+        quiz_id: r.quizId,
+        game_id: r.gameId,
+      };
+      // Preserve existing session data from previously played rounds
+      if (r.session_id) roundConfig.session_id = r.session_id;
+      if (r.game_pin) roundConfig.game_pin = r.game_pin;
+      if (r.lobby_id) roundConfig.lobby_id = r.lobby_id;
+      return roundConfig;
+    });
     
     while (newRounds.length > 0 && newRounds[newRounds.length - 1].quiz_id === "" && newRounds[newRounds.length - 1].game_id === "") {
       newRounds.pop();
